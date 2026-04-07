@@ -1,3 +1,0 @@
-C:/Users/21231/Desktop/VScode/项目/HIS/build/CMakeFiles/his.dir
-C:/Users/21231/Desktop/VScode/项目/HIS/build/CMakeFiles/edit_cache.dir
-C:/Users/21231/Desktop/VScode/项目/HIS/build/CMakeFiles/rebuild_cache.dir
