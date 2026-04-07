@@ -46,9 +46,9 @@ void safe_input(char *str, int size)
 void clear_screen(void)
 {
 #ifdef _WIN32
-    system("cls");
+    (void)system("cls");
 #else
-    system("clear");
+    (void)system("clear");
 #endif
 }
 
