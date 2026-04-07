@@ -8,7 +8,7 @@ if(MSVC)
     add_compile_options(/W4 /WX)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
-    add_compile_options(-Wall -Wextra -Werror)
+    add_compile_options(-Wall -Wextra -Werror -Wno-stringop-truncation -Wno-unused-result)
 endif()
 
 # # Windows 控制台中文输出

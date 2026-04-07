@@ -45,13 +45,11 @@ void safe_input(char *str, int size)
 /* 清屏(多系统) */
 void clear_screen(void)
 {
-    int ret;
 #ifdef _WIN32
-    ret = system("cls");
+    system("cls");
 #else
-    ret = system("clear");
+    system("clear");
 #endif
-    (void)ret;
 }
 
 /* 去掉字符串末尾换行(\r\n) */
