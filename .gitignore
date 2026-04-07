@@ -1,18 +1,55 @@
-# build 目录
-/build/
-cmake-build-*/
+# Prerequisites
+*.d
 
-# 可执行文件
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
 *.exe
 *.out
-*.o
+*.app
+*.i*86
+*.x86_64
+*.hex
 
-# 数据文件（可选）
-data/*.txt
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
 
-# CMake缓存
-CMakeCache.txt
-CMakeFiles/
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
 
-# 系统文件
-.DS_Store
+# debug information files
+*.dwo
