@@ -7,8 +7,11 @@ set(CMAKE_C_STANDARD 11)
 if(MSVC)
     add_compile_options(/W4 /WX)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-else()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     add_compile_options(-Wall -Wextra -Werror -Wno-stringop-truncation -Wno-unused-result)
+else()
+    # Clang 及其他编译器，不使用 GCC 专有的 -Wno-stringop-truncation
+    add_compile_options(-Wall -Wextra -Werror -Wno-unused-result)
 endif()
 
 # # Windows 控制台中文输出

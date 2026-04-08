@@ -118,7 +118,7 @@ HIS/
 
 ### 环境要求
 
-- C 编译器（GCC / MinGW / MSVC，需支持 C11）
+- C 编译器（GCC / MinGW / Clang / MSVC，需支持 C11）
 - CMake ≥ 3.10
 
 ### 构建步骤
