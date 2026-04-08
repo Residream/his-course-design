@@ -2,8 +2,8 @@
  * 科室功能模块
  */
 #include "model/department.h"
-#include "model/doctor.h"
 #include "core/utils.h"
+#include "model/doctor.h"
 
 /*
  * 科室基础操作

@@ -4,10 +4,10 @@
 #ifndef HOSPITALIZATION_H
 #define HOSPITALIZATION_H
 
-#include "model/bed.h"
 #include "core/config.h"
-#include "model/patient.h"
 #include "core/structs.h"
+#include "model/bed.h"
+#include "model/patient.h"
 #include "model/visit.h"
 #include "model/ward.h"
 

@@ -2,9 +2,9 @@
  * 挂号预约模块
  */
 #include "model/registration.h"
+#include "core/utils.h"
 #include "model/doctor.h"
 #include "model/patient.h"
-#include "core/utils.h"
 
 /*
  * 挂号基础操作

@@ -2,12 +2,12 @@
  * 住院模块
  */
 #include "model/hospitalization.h"
+#include "core/session.h"
+#include "core/utils.h"
 #include "model/bed.h"
 #include "model/doctor.h"
 #include "model/patient.h"
 #include "model/registration.h"
-#include "core/session.h"
-#include "core/utils.h"
 #include "model/visit.h"
 #include "model/ward.h"
 
@@ -1746,8 +1746,8 @@ void query_hospitalization_record(void)
                 Patient *pat = find_patient_by_p_id(p_head, h->p_id);
                 if (pat && strstr(pat->name, name_query) != NULL)
                 {
-                    print_hospitalization(h, v_head, r_head, p_head, w_head, b_head, h_w, v_w, p_w, ward_w, bed_w,
-                                          in_w, out_w, st_w);
+                    print_hospitalization(h, v_head, r_head, p_head, w_head, b_head, h_w, v_w, p_w, ward_w, bed_w, in_w,
+                                          out_w, st_w);
                     found = 1;
                 }
             }

@@ -2,14 +2,14 @@
  * 看诊模块
  */
 #include "model/visit.h"
+#include "core/utils.h"
 #include "model/doctor.h"
+#include "model/drug.h"
 #include "model/exam.h"
 #include "model/hospitalization.h"
 #include "model/patient.h"
-#include "model/registration.h"
-#include "core/utils.h"
 #include "model/prescription.h"
-#include "model/drug.h"
+#include "model/registration.h"
 
 /*
  * 看诊基础功能
@@ -463,8 +463,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             char diagnosis[MAX_LINE_LEN];
             while (1)
             {
@@ -505,8 +504,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             }
             break;
         }
-        case 2:
-        {
+        case 2: {
             while (1)
             {
                 clear_screen();
@@ -664,8 +662,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             }
             break;
         }
-        case 3:
-        {
+        case 3: {
             Prescription *pr_head = load_prescriptions_from_file();
             Drug *drug_head = load_drugs_from_file();
 
@@ -705,14 +702,16 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
                 else
                 {
                     int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-                    calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
+                    calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w,
+                                            &dose_w, &freq_w);
 
                     print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
                     for (Prescription *pr = pr_head; pr; pr = pr->next)
                     {
                         if (strcmp(pr->visit_id, v_id) == 0)
                         {
-                            print_prescription(pr, p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+                            print_prescription(pr, p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w,
+                                               freq_w);
                         }
                     }
                     print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);

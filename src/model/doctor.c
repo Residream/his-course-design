@@ -3,11 +3,11 @@
  */
 #include "model/doctor.h"
 #include "core/auth.h"
+#include "core/session.h"
+#include "core/utils.h"
 #include "model/department.h"
 #include "model/patient.h"
 #include "model/registration.h"
-#include "core/session.h"
-#include "core/utils.h"
 #include "model/visit.h"
 
 /*
@@ -641,8 +641,7 @@ void update_doctor()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -677,8 +676,7 @@ void update_doctor()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -708,8 +706,7 @@ void update_doctor()
             break;
         }
         /* 更新科室 */
-        case 3:
-        {
+        case 3: {
             char department[MAX_INPUT_LEN];
             while (1)
             {
@@ -740,8 +737,7 @@ void update_doctor()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -1052,8 +1048,7 @@ void doctor_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1088,8 +1083,7 @@ void doctor_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1119,8 +1113,7 @@ void doctor_update_my_info()
             break;
         }
         /* 更新科室 */
-        case 3:
-        {
+        case 3: {
             char department[MAX_INPUT_LEN];
             while (1)
             {
@@ -1151,8 +1144,7 @@ void doctor_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];

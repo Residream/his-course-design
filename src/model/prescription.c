@@ -3,12 +3,12 @@
  */
 
 #include "model/prescription.h"
-#include "model/patient.h"
+#include "core/utils.h"
 #include "model/doctor.h"
 #include "model/drug.h"
+#include "model/patient.h"
 #include "model/registration.h"
 #include "model/visit.h"
-#include "core/utils.h"
 
 /*
  * 处方基础操作
@@ -117,8 +117,8 @@ int save_prescriptions_to_file(Prescription *head)
         return -1;
 
     for (Prescription *cur = head; cur; cur = cur->next)
-        fprintf(fp, "%s|%s|%s|%s|%s|%s|%s\n", cur->pr_id, cur->visit_id, cur->d_id, cur->p_id, cur->drug_id,
-                cur->dose, cur->frequency);
+        fprintf(fp, "%s|%s|%s|%s|%s|%s|%s\n", cur->pr_id, cur->visit_id, cur->d_id, cur->p_id, cur->drug_id, cur->dose,
+                cur->frequency);
 
     return safe_fclose_commit(fp, tmp_path, PRESCRIPTIONS_FILE);
 }
@@ -194,7 +194,8 @@ int generate_next_prescription_id(Prescription *head)
 }
 
 /* 打印处方信息行 */
-void print_prescription(Prescription *pr, Patient *p_head, Doctor *d_head, Drug *drug_head, int pr_w, int visit_w, int d_w, int p_w, int drug_w, int dose_w, int freq_w)
+void print_prescription(Prescription *pr, Patient *p_head, Doctor *d_head, Drug *drug_head, int pr_w, int visit_w,
+                        int d_w, int p_w, int drug_w, int dose_w, int freq_w)
 {
     const char *p_name = get_patient_name_by_p_id(p_head, pr->p_id);
     Doctor *doc = find_doctor_by_d_id(d_head, pr->d_id);
@@ -271,7 +272,8 @@ void print_prescription_header(int pr_w, int visit_w, int d_w, int p_w, int drug
 }
 
 /* 计算处方表格列宽 */
-void calc_prescription_width(Prescription *head, Patient *p_head, Doctor *d_head, Drug *drug_head, int *pr_w, int *visit_w, int *d_w, int *p_w, int *drug_w, int *dose_w, int *freq_w)
+void calc_prescription_width(Prescription *head, Patient *p_head, Doctor *d_head, Drug *drug_head, int *pr_w,
+                             int *visit_w, int *d_w, int *p_w, int *drug_w, int *dose_w, int *freq_w)
 {
     *pr_w = str_width("处方ID");
     *visit_w = str_width("看诊ID");
@@ -340,7 +342,8 @@ Prescription *get_prescription_by_index(Prescription *head, int index)
 }
 
 /* 创建处方 */
-Prescription create_prescription(const char *pr_id, const char *visit_id, const char *p_id, const char *d_id, const char *drug_id, const char *dose, const char *frequency)
+Prescription create_prescription(const char *pr_id, const char *visit_id, const char *p_id, const char *d_id,
+                                 const char *drug_id, const char *dose, const char *frequency)
 {
     Prescription pr;
     memset(&pr, 0, sizeof(Prescription));
@@ -582,7 +585,8 @@ void delete_prescription_record()
             {
                 found = 1;
                 int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-                calc_prescription_width(current, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
+                calc_prescription_width(current, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w,
+                                        &dose_w, &freq_w);
 
                 clear_screen();
                 printf("找到处方:\n");
@@ -679,7 +683,8 @@ void update_prescription_record()
         {
             clear_screen();
             int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-            calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
+            calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
+                                    &freq_w);
 
             printf("找到处方记录，信息如下：\n");
             print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
@@ -797,7 +802,8 @@ void query_prescription_record()
 
         int found = 0;
         int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-        calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
+        calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
+                                &freq_w);
 
         for (Prescription *cur = pr_head; cur; cur = cur->next)
         {
@@ -813,8 +819,7 @@ void query_prescription_record()
             else if (select == 5) /* 按药品名称模糊匹配（通用名/商品名/别名） */
             {
                 Drug *drug = find_drug_by_id(drug_head, cur->drug_id);
-                if (drug && (strstr(drug->generic_name, query) != NULL ||
-                             strstr(drug->trade_name, query) != NULL ||
+                if (drug && (strstr(drug->generic_name, query) != NULL || strstr(drug->trade_name, query) != NULL ||
                              strstr(drug->alias, query) != NULL))
                     match = 1;
             }

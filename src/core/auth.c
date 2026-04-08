@@ -2,9 +2,9 @@
  * 登录验证模块
  */
 #include "core/auth.h"
-#include "model/patient.h"
 #include "core/sha256.h"
 #include "core/utils.h"
+#include "model/patient.h"
 
 /* 单个十六进制字符串转十六进制 */
 static int hex_char_to_val(char c)
@@ -131,11 +131,14 @@ int patient_login_by_file(const char *file, const char *id, const char *password
             continue;
 
         token = strtok(NULL, "|"); // 跳过name
-        if (!token) continue;
+        if (!token)
+            continue;
         token = strtok(NULL, "|"); // 跳过gender
-        if (!token) continue;
+        if (!token)
+            continue;
         token = strtok(NULL, "|"); // 跳过age
-        if (!token) continue;
+        if (!token)
+            continue;
 
         token = strtok(NULL, "|"); // 读取pwd_hash
         if (!token)
@@ -180,11 +183,14 @@ int doctor_login_by_file(const char *file, const char *id, const char *password)
             continue;
 
         token = strtok(NULL, "|"); // 跳过name
-        if (!token) continue;
+        if (!token)
+            continue;
         token = strtok(NULL, "|"); // 跳过gender
-        if (!token) continue;
+        if (!token)
+            continue;
         token = strtok(NULL, "|"); // 跳过department
-        if (!token) continue;
+        if (!token)
+            continue;
 
         token = strtok(NULL, "|"); // 读取pwd_hash
         if (!token)

@@ -2,10 +2,10 @@
  *检查模块
  */
 #include "model/exam.h"
+#include "core/utils.h"
 #include "model/doctor.h"
 #include "model/patient.h"
 #include "model/registration.h"
-#include "core/utils.h"
 #include "model/visit.h"
 
 /*
@@ -663,7 +663,8 @@ void update_exam_record()
         {
             int exam_w, visit_w, p_w, d_w, dept_w, item_w, result_w;
             clear_screen();
-            calc_exam_width(e_head, v_head, r_head, p_head, d_head, &exam_w, &visit_w, &p_w, &d_w, &dept_w, &item_w, &result_w);
+            calc_exam_width(e_head, v_head, r_head, p_head, d_head, &exam_w, &visit_w, &p_w, &d_w, &dept_w, &item_w,
+                            &result_w);
 
             printf("找到检查记录，信息如下：\n");
             print_exam_header(exam_w, visit_w, p_w, d_w, dept_w, item_w, result_w);
@@ -781,8 +782,7 @@ void query_exam_record()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             char exam_id[MAX_ID_LEN];
 
             printf("请输入检查ID(输入0返回): ");
@@ -820,8 +820,7 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 2:
-        {
+        case 2: {
             char visit_id[MAX_ID_LEN];
 
             printf("请输入看诊ID(输入0返回): ");
@@ -866,8 +865,7 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 3:
-        {
+        case 3: {
             char p_id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(p_id, sizeof(p_id));
@@ -911,8 +909,7 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 4:
-        {
+        case 4: {
             char d_id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(d_id, sizeof(d_id));

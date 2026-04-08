@@ -3,16 +3,16 @@
  */
 #include "model/patient.h"
 #include "core/auth.h"
-#include "model/department.h"
-#include "model/doctor.h"
-#include "model/exam.h"
-#include "model/hospitalization.h"
-#include "model/registration.h"
 #include "core/session.h"
 #include "core/utils.h"
-#include "model/visit.h"
-#include "model/prescription.h"
+#include "model/department.h"
+#include "model/doctor.h"
 #include "model/drug.h"
+#include "model/exam.h"
+#include "model/hospitalization.h"
+#include "model/prescription.h"
+#include "model/registration.h"
+#include "model/visit.h"
 
 /*
  * 患者基础操作
@@ -692,8 +692,7 @@ void update_patient()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -727,8 +726,7 @@ void update_patient()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -758,8 +756,7 @@ void update_patient()
             break;
         }
         /* 更新年龄 */
-        case 3:
-        {
+        case 3: {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -824,8 +821,7 @@ void update_patient()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -1130,8 +1126,7 @@ void patient_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1165,8 +1160,7 @@ void patient_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1196,8 +1190,7 @@ void patient_update_my_info()
             break;
         }
         /* 更新年龄 */
-        case 3:
-        {
+        case 3: {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -1262,8 +1255,7 @@ void patient_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];
@@ -1745,7 +1737,8 @@ void patient_view_my_exams_records()
     else
     {
         int exam_w, p_w, d_w, dept_w, when_w, type_w, res_w;
-        calc_exam_width(exam_head, visit_head, reg_head, p_head, d_head, &exam_w, &p_w, &d_w, &dept_w, &when_w, &type_w, &res_w);
+        calc_exam_width(exam_head, visit_head, reg_head, p_head, d_head, &exam_w, &p_w, &d_w, &dept_w, &when_w, &type_w,
+                        &res_w);
 
         print_exam_header(exam_w, p_w, d_w, dept_w, when_w, type_w, res_w);
 
@@ -1807,13 +1800,15 @@ void patient_view_my_hospitalization_records()
     else
     {
         int h_w, v_w, p_w, ward_w, bed_w, in_w, out_w, st_w;
-        calc_hospitalization_width(hosp_head, visit_head, reg_head, p_head, ward_head, bed_head, &h_w, &v_w, &p_w, &ward_w, &bed_w, &in_w, &out_w, &st_w);
+        calc_hospitalization_width(hosp_head, visit_head, reg_head, p_head, ward_head, bed_head, &h_w, &v_w, &p_w,
+                                   &ward_w, &bed_w, &in_w, &out_w, &st_w);
 
         print_hospitalization_header(h_w, v_w, p_w, ward_w, bed_w, in_w, out_w, st_w);
 
         while (hit)
         {
-            print_hospitalization(hit, visit_head, reg_head, p_head, ward_head, bed_head, h_w, v_w, p_w, ward_w, bed_w, in_w, out_w, st_w);
+            print_hospitalization(hit, visit_head, reg_head, p_head, ward_head, bed_head, h_w, v_w, p_w, ward_w, bed_w,
+                                  in_w, out_w, st_w);
             hit = find_hospitalization_by_p_id(hit->next, g_session.user_id);
         }
 

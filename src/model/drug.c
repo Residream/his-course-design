@@ -2,12 +2,12 @@
  * 药品和药房管理模块
  */
 #include "model/drug.h"
-#include "ui/menu.h"
-#include "core/utils.h"
 #include "core/session.h"
-#include "model/patient.h"
+#include "core/utils.h"
 #include "model/doctor.h"
+#include "model/patient.h"
 #include "model/prescription.h"
+#include "ui/menu.h"
 
 /*
  * 药品基础操作
@@ -117,7 +117,8 @@ int save_drugs_to_file(Drug *head)
     if (!fp)
         return -1;
     for (Drug *cur = head; cur; cur = cur->next)
-        fprintf(fp, "%s|%s|%s|%s|%.2f|%d|%s\n", cur->id, cur->generic_name, cur->trade_name, cur->alias, cur->price, cur->stock, cur->department);
+        fprintf(fp, "%s|%s|%s|%s|%.2f|%d|%s\n", cur->id, cur->generic_name, cur->trade_name, cur->alias, cur->price,
+                cur->stock, cur->department);
     return safe_fclose_commit(fp, tmp_path, DRUGS_FILE);
 }
 
@@ -1009,7 +1010,8 @@ void query_drug()
                 print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
                 found = 1;
             }
-            else if (select == 2 && (strstr(cur->generic_name, query) || strstr(cur->trade_name, query) || strstr(cur->alias, query)))
+            else if (select == 2 &&
+                     (strstr(cur->generic_name, query) || strstr(cur->trade_name, query) || strstr(cur->alias, query)))
             {
                 print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
                 found = 1;
@@ -1457,7 +1459,8 @@ void stock_in_pharmacy()
     if (save_drugs_to_file(d_head) != 0)
         printf("保存药品信息失败！\n");
 
-    printf("入库成功！药房 [%s] 新增药品 [%s] %d 件，最新总库存: %d\n", target_p->name, target_d->generic_name, add_qty, target_d->stock);
+    printf("入库成功！药房 [%s] 新增药品 [%s] %d 件，最新总库存: %d\n", target_p->name, target_d->generic_name, add_qty,
+           target_d->stock);
     wait_enter();
 
 cleanup:
@@ -1512,7 +1515,8 @@ void dispense_prescription_drug()
 
     // 2. 筛选并打印当前医生名下的处方
     int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-    calc_prescription_width(pr_head, patient_head, doc_head, d_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
+    calc_prescription_width(pr_head, patient_head, doc_head, d_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
+                            &freq_w);
 
     int pr_count = 0;
     print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
@@ -1580,7 +1584,8 @@ void dispense_prescription_drug()
     if (strcmp(target_drug->department, "通用") != 0 && strcmp(target_drug->department, my_dept) != 0)
     {
         printf("\n【拦截告警】发药拒绝！\n");
-        printf("该药品 [%s] 专属科室为 [%s]，不属于您的科室 [%s] 或 通用药！\n", target_drug->generic_name, target_drug->department, my_dept);
+        printf("该药品 [%s] 专属科室为 [%s]，不属于您的科室 [%s] 或 通用药！\n", target_drug->generic_name,
+               target_drug->department, my_dept);
         wait_enter();
         goto cleanup;
     }

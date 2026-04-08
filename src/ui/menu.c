@@ -3,21 +3,21 @@
  */
 #include "ui/menu.h"
 #include "core/auth.h"
-#include "model/department.h"
-#include "model/doctor.h"
-#include "model/exam.h"
-#include "model/hospitalization.h"
-#include "model/patient.h"
-#include "model/registration.h"
 #include "core/session.h"
 #include "core/sha256.h"
 #include "core/structs.h"
 #include "core/utils.h"
+#include "model/bed.h"
+#include "model/department.h"
+#include "model/doctor.h"
+#include "model/drug.h"
+#include "model/exam.h"
+#include "model/hospitalization.h"
+#include "model/patient.h"
+#include "model/prescription.h"
+#include "model/registration.h"
 #include "model/visit.h"
 #include "model/ward.h"
-#include "model/bed.h"
-#include "model/drug.h"
-#include "model/prescription.h"
 
 /*
  * 菜单工具函数实现
@@ -143,13 +143,11 @@ void login_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             patient_pre_menu();
             break;
         }
-        case 2:
-        {
+        case 2: {
             char id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(id, sizeof(id));
@@ -182,8 +180,7 @@ void login_menu()
             }
             break;
         }
-        case 3:
-        {
+        case 3: {
             char name[MAX_NAME_LEN];
             printf("请输入管理员用户名(输入0返回): ");
             safe_input(name, sizeof(name));
@@ -261,13 +258,11 @@ void patient_pre_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             patient_register();
             break;
         }
-        case 2:
-        {
+        case 2: {
             char id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(id, sizeof(id));
@@ -698,8 +693,7 @@ void manager_drug_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             // 药品管理子菜单
             while (1)
             {
@@ -757,8 +751,7 @@ void manager_drug_menu()
         drug_menu_end:
             break;
         }
-        case 2:
-        {
+        case 2: {
             // 药房管理子菜单
             while (1)
             {
@@ -812,8 +805,7 @@ void manager_drug_menu()
         pharmacy_menu_end:
             break;
         }
-        case 3:
-        {
+        case 3: {
             // 药房药品管理子菜单
             while (1)
             {
@@ -1621,8 +1613,7 @@ void doctor_visit_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             char reg_id[MAX_ID_LEN];
             char v_id[MAX_ID_LEN];
             printf("请输入挂号ID开始看诊(输入0返回): ");
@@ -1664,8 +1655,7 @@ void doctor_visit_menu()
             doctor_visit_patient(v_head, v_id, &e_head, r_head, p_head, d_head);
             goto cleanup;
         }
-        case 2:
-        {
+        case 2: {
             char v_id[MAX_ID_LEN];
             printf("请输入看诊ID继续看诊(输入0返回): ");
             safe_input(v_id, sizeof(v_id));

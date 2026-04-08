@@ -2,8 +2,8 @@
  * 病房模块
  */
 #include "model/ward.h"
-#include "model/bed.h"
 #include "core/utils.h"
+#include "model/bed.h"
 
 /*
  *病房基础功能
