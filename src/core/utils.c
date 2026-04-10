@@ -140,28 +140,46 @@ int str_width(const char *s)
     int width = 0;
     while (*s)
     {
-        unsigned char c = (unsigned char)*s;
-        if (c < 0x80)
+        unsigned char c0 = (unsigned char)s[0];
+
+        if (c0 < 0x80)
         {
             /* ASCII: 1字节，宽度1 */
             width += 1;
             s += 1;
         }
-        else if (c < 0xC0)
+        else if (c0 < 0xC0)
         {
-            /* 孤立的后续字节(数据损坏)，跳过1字节 */
+            /* 孤立后续字节(异常数据)，跳过 */
             s += 1;
         }
-        else if (c < 0xE0)
+        else if (c0 < 0xE0)
         {
-            /* 2字节序列(拉丁扩展等)，宽度1 */
+            /* 2字节序列：默认宽度1 */
             width += 1;
             s += ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF) ? 2 : 1;
         }
-        else if (c < 0xF0)
+        else if (c0 < 0xF0)
         {
-            /* 3字节序列(中日韩汉字等)，宽度2 */
-            width += 2;
+            /* 3字节序列：默认宽度2（中日韩等） */
+            int w = 2;
+
+            unsigned char c1 = (unsigned char)s[1];
+            unsigned char c2 = (unsigned char)s[2];
+
+            /* 常用单列符号特例 */
+            if (
+                /* ↑ U+2191 */ (c0 == 0xE2 && c1 == 0x86 && c2 == 0x91) ||
+                /* → U+2192 */ (c0 == 0xE2 && c1 == 0x86 && c2 == 0x92) ||
+                /* ↓ U+2193 */ (c0 == 0xE2 && c1 == 0x86 && c2 == 0x93) ||
+                /* ✓ U+2713 */ (c0 == 0xE2 && c1 == 0x9C && c2 == 0x93) ||
+                /* ⚠ U+26A0 */ (c0 == 0xE2 && c1 == 0x9A && c2 == 0xA0))
+            {
+                w = 1;
+            }
+
+            width += w;
+
             int step = 1;
             if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF)
             {
@@ -173,8 +191,9 @@ int str_width(const char *s)
         }
         else
         {
-            /* 4字节序列(emoji等)，宽度2 */
+            /* 4字节序列(emoji等)：默认宽度2 */
             width += 2;
+
             int step = 1;
             if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF)
             {
