@@ -1,3 +1,7 @@
+# ==============================================================================
+# C/C++ 通用编译产物
+# ==============================================================================
+
 # Prerequisites
 *.d
 
@@ -41,6 +45,7 @@
 *.su
 *.idb
 *.pdb
+*.dwo
 
 # Kernel Module Compile Results
 *.mod*
@@ -51,8 +56,9 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-# debug information files
-*.dwo
+# ==============================================================================
+# 构建目录与 CMake 相关
+# ==============================================================================
 
 # build directories
 build/
@@ -60,7 +66,40 @@ cmake-build-*/
 out/
 bin/
 
-#macos
+# CMake caches and generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# ==============================================================================
+# HIS 项目专属 (数据持久化与脚本缓存)
+# ==============================================================================
+
+# 运行时临时文件与备份
+*.tmp
+*.bak
+data/*.tmp
+
+# Python 数据生成脚本的缓存 (tools/gen_data.py)
+__pycache__/
+*.pyc
+*.pyo
+
+# ==============================================================================
+# 操作系统与 IDE 环境
+# ==============================================================================
+
+# macOS 专属
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# 常见 IDE 与编辑器配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
