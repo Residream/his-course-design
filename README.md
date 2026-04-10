@@ -37,6 +37,7 @@
 | 病房/床位 | 病房管理、床位分配与释放                                                         |
 | 药品管理  | 药品信息（支持名称模糊搜索）、药房管理、库存管理                                 |
 | 医疗记录  | 挂号、看诊、检查、住院（支持姓名模糊搜索）、处方（支持药品名称模糊搜索）记录管理 |
+| 数据分析  | 病房利用率、科室门诊趋势、病房优化、药品使用、住院时长分布与预测                 |
 
 ---
 
@@ -81,7 +82,8 @@ HIS/
 │   │   ├── ward.h                      病房
 │   │   ├── bed.h                       床位
 │   │   ├── drug.h                      药品与药房
-│   │   └── prescription.h              处方
+│   │   ├── prescription.h              处方
+│   │   └── analytics.h                 数据分析模块常量与入口
 │   └── ui/
 │       └── menu.h                      菜单系统
 ├── src/
@@ -97,7 +99,8 @@ HIS/
 │   │   ├── registration.c, visit.c, exam.c
 │   │   ├── hospitalization.c, ward.c, bed.c
 │   │   ├── drug.c                      药品 + 药房 + 药房库存 + 发药业务
-│   │   └── prescription.c             处方管理
+│   │   ├── prescription.c              处方管理
+│   │   └── analytics.c                 数据分析报表与统计逻辑
 │   └── ui/
 │       └── menu.c                      三角色菜单驱动（~1960 行）
 ├── data/                           数据文件（管道符分隔 .txt）
@@ -208,7 +211,14 @@ python tools/gen_data.py
 - 菜单驱动的交互模式，支持分页浏览（每页 10 条）
 - 自适应列宽的表格输出，正确处理中文字符宽度（UTF-8 双字节显示宽度）
 - Unicode 边框绘制的菜单框架
+- 数据分析模块支持表格、进度条、柱状图等文本可视化输出
 
 ### 编码说明
 
 源码使用 UTF-8 编码。CMakeLists.txt 同时支持 GCC 和 MSVC 编译器（自动检测）。若在 Windows CMD/PowerShell 中遇到中文乱码，可取消 `CMakeLists.txt` 中 `if(WIN32)` 注释块，启用 `-fexec-charset=GBK` 编译选项后重新构建。
+
+### 代码风格补充
+
+- 公共宏统一集中在 [`config.h`](include/core/config.h) 和 [`analytics.h`](include/model/analytics.h) 中声明，并附带用途备注
+- [`analytics`](include/model/analytics.h) 模块内部常量统一采用 `ANALYTICS_*` 前缀，避免与全局配置或其他模块宏冲突
+- 通用渲染函数统一复用 [`render_bar()`](src/core/utils.c:274) 与 [`render_hbar()`](src/core/utils.c:311)，避免重复声明与实现
