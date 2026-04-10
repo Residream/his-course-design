@@ -14,11 +14,21 @@ from pathlib import Path
 # ================= 配置区 =================
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 NUM_PATIENTS = 130
-NUM_HOSP_PATIENTS = 30
+NUM_HOSP_PATIENTS = 80
 NUM_DOCTORS = 30
 
 DEPARTMENTS = ["内科", "外科", "妇产科", "儿科", "急诊科"]
 WARD_NAMES = ["内科一病区", "内科二病区", "外科一病区", "外科二病区", "妇产科病区", "儿科病区", "急诊留观病区", "综合病区"]
+
+# 科室→优先病房亲和度映射 (按 WARD_NAMES 顺序生成的 ward_id)
+DEPT_WARD_AFFINITY = {
+    "内科":   ["W0001", "W0002"],   # 内科一/二病区
+    "外科":   ["W0003", "W0004"],   # 外科一/二病区
+    "妇产科": ["W0005"],              # 妇产科病区
+    "儿科":   ["W0006"],              # 儿科病区
+    "急诊科": ["W0007"],              # 急诊留观病区
+}
+OVERFLOW_WARD = "W0008"               # 综合病区作为溢出缓冲
 
 # 科室专属药品池 (id, 通用名, 商品名, 别名, 价格, 总库存)
 DRUG_DICT = {
@@ -89,7 +99,7 @@ def hash_password(password: str) -> tuple[str, str]:
     m.update(password.encode("utf-8"))
     return m.hexdigest(), salt_raw.hex()
 
-def random_past_time(days_ago_min=1, days_ago_max=30) -> datetime:
+def random_past_time(days_ago_min=1, days_ago_max=90) -> datetime:
     now = datetime.now()
     delta = timedelta(days=random.randint(days_ago_min, days_ago_max), 
                       hours=random.randint(0, 23), minutes=random.randint(0, 59))
@@ -179,7 +189,7 @@ def generate_all():
             did = random.choice(doctors)[0]
             doc_dept = doc_dept_map[did] 
             
-            reg_dt = random_past_time(1, 30)
+            reg_dt = random_past_time(1, 90)
             reg_status = random.choices([0, 1, 2], weights=[10, 80, 10])[0]
             registrations.append((rid, pid, did, int(reg_dt.timestamp()), reg_status))
             reg_seq += 1
@@ -187,16 +197,16 @@ def generate_all():
             if reg_status == 1:
                 vid = f"V{visit_seq:04d}"
                 visit_dt = reg_dt + timedelta(minutes=random.randint(10, 60))
-                
-                is_last_30 = int(pid[1:]) > (NUM_PATIENTS - NUM_HOSP_PATIENTS)
-                v_status = 1 if is_last_30 else random.choices([0, 1], weights=[30, 70])[0]
-                
+
+                is_hosp_candidate = int(pid[1:]) > (NUM_PATIENTS - NUM_HOSP_PATIENTS)
+                v_status = 1 if is_hosp_candidate else random.choices([0, 1], weights=[30, 70])[0]
+
                 diagnosis = random.choice(DIAG_POOL) if v_status == 1 else f"初步考虑：{random.choice(DIAG_POOL)}"
                 visits.append((vid, rid, int(visit_dt.timestamp()), v_status, diagnosis))
                 visit_seq += 1
-                
+
                 if v_status == 1:
-                    hosp_candidates.setdefault(pid, []).append((vid, visit_dt))
+                    hosp_candidates.setdefault(pid, []).append((vid, visit_dt, doc_dept))
 
                     # 检查
                     if random.random() < 0.8:
@@ -207,8 +217,8 @@ def generate_all():
                         exam_seq += 1
 
                     # 处方（专属科室药 + 通用药 混合开具）
-                    if random.random() < 0.85: 
-                        num_drugs = random.randint(1, 2)
+                    if random.random() < 0.90:
+                        num_drugs = random.randint(1, 3)
                         
                         # 把该医生的专属科室药和通用药合并成可选池
                         dept_drug_pool = DRUG_DICT.get(doc_dept, []) + DRUG_DICT.get("通用", [])
@@ -231,43 +241,96 @@ def generate_all():
                             prescriptions.append((prid, vid, did, pid, drug_id, dose, freq))
                             pr_seq += 1
 
-    # 7. 生成住院 
+    # 7. 生成住院（按科室亲和度分配病房，允许同一患者多次住院）
     hospitalizations = []
     hosp_seq = 1
-    last_30_pids = [f"P{i:04d}" for i in range(NUM_PATIENTS - NUM_HOSP_PATIENTS + 1, NUM_PATIENTS + 1)]
-    free_beds = [b for b in beds if b["status"] == 0]
-    random.shuffle(free_beds)
+    hosp_pool_pids = [f"P{i:04d}" for i in range(NUM_PATIENTS - NUM_HOSP_PATIENTS + 1, NUM_PATIENTS + 1)]
 
-    for pid in last_30_pids:
+    # 按 ward_id 索引空床位，便于按病房亲和度查找
+    free_beds_by_ward = {}
+    for b in beds:
+        if b["status"] == 0:
+            free_beds_by_ward.setdefault(b["ward_id"], []).append(b)
+    for wid in free_beds_by_ward:
+        random.shuffle(free_beds_by_ward[wid])
+
+    def pick_bed_for_dept(dept):
+        """按科室亲和度选择空床：70% 优先对口病房，否则溢出到综合病区。"""
+        primary_wards = DEPT_WARD_AFFINITY.get(dept, [])[:]
+        random.shuffle(primary_wards)
+        prefer_primary = random.random() < 0.7
+
+        if prefer_primary:
+            search_order = primary_wards + [OVERFLOW_WARD] + primary_wards
+        else:
+            search_order = [OVERFLOW_WARD] + primary_wards
+
+        for wid in search_order:
+            pool = free_beds_by_ward.get(wid)
+            if pool:
+                return pool.pop()
+        # 所有对口/溢出病房都满，取任意空床
+        for pool in free_beds_by_ward.values():
+            if pool:
+                return pool.pop()
+        return None
+
+    for pid in hosp_pool_pids:
         candidates = hosp_candidates.get(pid)
-        if not candidates or not free_beds: continue
-            
-        vid, visit_dt = candidates[-1]
-        bed = free_beds.pop()
-        bed["status"] = 1
-        for w in wards:
-            if w["ward_id"] == bed["ward_id"]:
-                w["occupied"] += 1
-                break
+        if not candidates:
+            continue
+        # 按时间排序，保证复诊住院先后顺序合理
+        sorted_cands = sorted(candidates, key=lambda c: c[1])
+        # 跟踪该患者上一次住院是否已结束，避免重叠入院
+        in_hosp_until = None   # None=可入院 / "ongoing"=尚在院 / datetime=上次出院时间
 
-        hid = f"H{hosp_seq:04d}"
-        admit_dt = visit_dt + timedelta(hours=random.randint(1, 5))
-        h_status = random.choices([0, 1], weights=[40, 60])[0]
-        if h_status == 1:
-            discharge_dt = admit_dt + timedelta(days=random.randint(2, 15))
-            if discharge_dt > datetime.now(): discharge_dt = datetime.now() - timedelta(hours=1)
-            discharge_ts = int(discharge_dt.timestamp())
-            
-            bed["status"] = 0
+        for vid, visit_dt, doc_dept in sorted_cands:
+            if in_hosp_until == "ongoing":
+                break
+            if isinstance(in_hosp_until, datetime) and visit_dt < in_hosp_until:
+                continue
+
+            bed = pick_bed_for_dept(doc_dept)
+            if bed is None:
+                break   # 所有病房都满，停止为该患者安排住院
+
+            bed["status"] = 1
             for w in wards:
                 if w["ward_id"] == bed["ward_id"]:
-                    w["occupied"] -= 1
+                    w["occupied"] += 1
                     break
-        else:
-            discharge_ts = 0
 
-        hospitalizations.append((hid, vid, pid, bed["ward_id"], bed["bed_id"], int(admit_dt.timestamp()), discharge_ts, h_status))
-        hosp_seq += 1
+            hid = f"H{hosp_seq:04d}"
+            admit_dt = visit_dt + timedelta(hours=random.randint(1, 5))
+            h_status = random.choices([0, 1], weights=[40, 60])[0]
+            if h_status == 1:
+                # 按概率分布生成不同住院时长：短/常规/中/长/超长
+                stay_bucket = random.choices([0, 1, 2, 3, 4], weights=[20, 35, 25, 15, 5])[0]
+                stay_days = [random.randint(1, 3),
+                             random.randint(4, 7),
+                             random.randint(8, 14),
+                             random.randint(15, 30),
+                             random.randint(31, 50)][stay_bucket]
+                discharge_dt = admit_dt + timedelta(days=stay_days)
+                if discharge_dt > datetime.now():
+                    discharge_dt = datetime.now() - timedelta(hours=1)
+                discharge_ts = int(discharge_dt.timestamp())
+
+                # 出院后归还床位到空床池
+                bed["status"] = 0
+                free_beds_by_ward.setdefault(bed["ward_id"], []).append(bed)
+                for w in wards:
+                    if w["ward_id"] == bed["ward_id"]:
+                        w["occupied"] -= 1
+                        break
+                in_hosp_until = discharge_dt
+            else:
+                discharge_ts = 0
+                in_hosp_until = "ongoing"
+
+            hospitalizations.append((hid, vid, pid, bed["ward_id"], bed["bed_id"],
+                                      int(admit_dt.timestamp()), discharge_ts, h_status))
+            hosp_seq += 1
 
     # ================= 统一写入文件模块 =================
     def write_txt(filename, data_list, separator="|"):
