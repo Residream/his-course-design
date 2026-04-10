@@ -7,6 +7,7 @@
 #include "core/sha256.h"
 #include "core/structs.h"
 #include "core/utils.h"
+#include "model/analytics.h"
 #include "model/bed.h"
 #include "model/department.h"
 #include "model/doctor.h"
@@ -454,6 +455,7 @@ void manager_main_menu()
         menu_item(3, "病房和床位管理");
         menu_item(4, "药品和药房管理");
         menu_item(5, "医疗记录管理");
+        menu_item(6, "数据分析");
         menu_blank();
         menu_item(0, "退出系统");
         menu_bottom();
@@ -461,7 +463,7 @@ void manager_main_menu()
         printf("请输入您的选择: ");
         safe_input(buf, MAX_INPUT_LEN);
 
-        if (!validate_choice(buf, 5))
+        if (!validate_choice(buf, 6))
         {
             printf("输入有误，请重新选择！\n");
             wait_enter();
@@ -487,6 +489,9 @@ void manager_main_menu()
             break;
         case 5:
             manager_medical_records_menu();
+            break;
+        case 6:
+            manager_analytics_menu();
             break;
         case 0:
             session_clear();
@@ -1306,6 +1311,66 @@ void manager_prescription_records_menu()
             break;
         case 5:
             show_all_prescription_records();
+            break;
+        case 0:
+            clear_screen();
+            return;
+        default:
+            printf("未知错误: %d\n", select);
+            break;
+        }
+    }
+}
+
+/* 数据分析 */
+void manager_analytics_menu()
+{
+    char buf[MAX_INPUT_LEN];
+    int select;
+    while (1)
+    {
+        clear_screen();
+        menu_top();
+        menu_title("数据分析");
+        menu_split();
+        menu_item(1, "病房利用率分析");
+        menu_item(2, "科室门诊量与趋势分析");
+        menu_item(3, "住院分析和病房优化");
+        menu_item(4, "药品使用分析");
+        menu_item(5, "住院时长分布与预测");
+        menu_blank();
+        menu_item(0, "返回上级菜单");
+        menu_bottom();
+
+        printf("请输入您的选择: ");
+        safe_input(buf, MAX_INPUT_LEN);
+
+        if (!validate_choice(buf, 5))
+        {
+            printf("输入有误，请重新选择！\n");
+            wait_enter();
+            clear_screen();
+            continue;
+        }
+
+        select = atoi(buf);
+
+        switch (select)
+        {
+        case 1:
+            analytics_ward_utilization();
+            break;
+        case 2:
+            analytics_department_workload();
+            break;
+        case 3:
+            analytics_ward_optimization();
+            break;
+        case 4:
+            analytics_drug_usage();
+            break;
+        case 5:
+            analytics_hospitalization_duration();
             break;
         case 0:
             clear_screen();

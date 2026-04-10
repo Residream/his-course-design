@@ -59,3 +59,8 @@ build/
 cmake-build-*/
 out/
 bin/
+
+#macos
+.DS_Store
+.AppleDouble
+.LSOverride
