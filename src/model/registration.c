@@ -68,7 +68,14 @@ Registration *load_registrations_from_file(void)
             free(node);
             continue;
         }
-        node->when = (time_t)atoll(token);
+        char *endptr = NULL;
+        long long when_val = strtoll(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || when_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->when = (time_t)when_val;
 
         token = strtok(NULL, "|"); // status
         if (!token)
@@ -76,7 +83,14 @@ Registration *load_registrations_from_file(void)
             free(node);
             continue;
         }
-        node->status = atoi(token);
+        endptr = NULL;
+        long status_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || status_val < 0 || status_val >= REG_STATUS_COUNT)
+        {
+            free(node);
+            continue;
+        }
+        node->status = (int)status_val;
 
         node->next = NULL;
         if (!head)
@@ -169,11 +183,24 @@ int generate_next_registration_id(Registration *head)
     Registration *current = head;
     while (current)
     {
-        if (strncmp(current->reg_id, "R", 1) == 0)
+        const char *id = current->reg_id;
+        if (id[0] == 'R')
         {
-            int num = atoi(current->reg_id + 1);
-            if (num > max_id)
-                max_id = num;
+            int valid = 1;
+            for (int i = 1; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[1] != '\0')
+            {
+                int num = atoi(id + 1);
+                if (num > max_id)
+                    max_id = num;
+            }
         }
         current = current->next;
     }

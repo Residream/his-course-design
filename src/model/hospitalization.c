@@ -86,7 +86,14 @@ Hospitalization *load_hospitalizations_from_file(void)
             free(node);
             continue;
         }
-        node->admit_date = (time_t)atoll(token);
+        char *endptr = NULL;
+        long long admit_val = strtoll(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || admit_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->admit_date = (time_t)admit_val;
 
         token = strtok(NULL, "|"); // discharge_date
         if (!token)
@@ -94,7 +101,14 @@ Hospitalization *load_hospitalizations_from_file(void)
             free(node);
             continue;
         }
-        node->discharge_date = (time_t)atoll(token);
+        endptr = NULL;
+        long long discharge_val = strtoll(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || discharge_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->discharge_date = (time_t)discharge_val;
 
         token = strtok(NULL, "|"); // status
         if (!token)
@@ -102,7 +116,14 @@ Hospitalization *load_hospitalizations_from_file(void)
             free(node);
             continue;
         }
-        node->status = atoi(token);
+        endptr = NULL;
+        long status_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || status_val < 0 || status_val >= HOSP_STATUS_COUNT)
+        {
+            free(node);
+            continue;
+        }
+        node->status = (int)status_val;
 
         node->next = NULL;
         if (!head)
@@ -186,11 +207,24 @@ int generate_next_hospitalization_id(Hospitalization *head)
     int max_id = 0;
     for (Hospitalization *cur = head; cur; cur = cur->next)
     {
-        if (cur->hosp_id[0] == 'H')
+        const char *id = cur->hosp_id;
+        if (id[0] == 'H')
         {
-            int n = atoi(cur->hosp_id + 1);
-            if (n > max_id)
-                max_id = n;
+            int valid = 1;
+            for (int i = 1; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[1] != '\0')
+            {
+                int n = atoi(id + 1);
+                if (n > max_id)
+                    max_id = n;
+            }
         }
     }
     return max_id + 1;

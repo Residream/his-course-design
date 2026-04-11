@@ -76,7 +76,14 @@ Patient *load_patients_from_file(void)
             free(node);
             continue;
         }
-        node->age = atoi(token);
+        char *endptr = NULL;
+        long age_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || age_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->age = (int)age_val;
 
         token = strtok(NULL, "|"); // 读取pwd_hash
         if (!token)
@@ -692,7 +699,8 @@ void update_patient()
         switch (select)
         {
         /* 更新姓名 */
-        case 1: {
+        case 1:
+        {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -726,7 +734,8 @@ void update_patient()
             break;
         }
         /* 更新性别 */
-        case 2: {
+        case 2:
+        {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -756,7 +765,8 @@ void update_patient()
             break;
         }
         /* 更新年龄 */
-        case 3: {
+        case 3:
+        {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -821,7 +831,8 @@ void update_patient()
             break;
         }
         /* 更新密码 */
-        case 4: {
+        case 4:
+        {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -1126,7 +1137,8 @@ void patient_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1: {
+        case 1:
+        {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1160,7 +1172,8 @@ void patient_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2: {
+        case 2:
+        {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1190,7 +1203,8 @@ void patient_update_my_info()
             break;
         }
         /* 更新年龄 */
-        case 3: {
+        case 3:
+        {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -1255,7 +1269,8 @@ void patient_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4: {
+        case 4:
+        {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];

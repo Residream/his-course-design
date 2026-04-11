@@ -64,7 +64,14 @@ Visit *load_visits_from_file(void)
             free(node);
             continue;
         }
-        node->when = atoll(token);
+        char *endptr = NULL;
+        long long when_val = strtoll(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || when_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->when = (time_t)when_val;
 
         token = strtok(NULL, "|"); // status
         if (!token)
@@ -72,7 +79,14 @@ Visit *load_visits_from_file(void)
             free(node);
             continue;
         }
-        node->status = atoi(token);
+        endptr = NULL;
+        long status_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || status_val < 0 || status_val >= VISIT_STATUS_COUNT)
+        {
+            free(node);
+            continue;
+        }
+        node->status = (int)status_val;
 
         token = strtok(NULL, "|"); // diagnosis (可选，未来可能添加)
         if (token)
@@ -206,11 +220,24 @@ int generate_next_visit_id(Visit *head)
     Visit *current = head;
     while (current)
     {
-        if (strncmp(current->visit_id, "V", 1) == 0)
+        const char *id = current->visit_id;
+        if (id[0] == 'V')
         {
-            int num = atoi(current->visit_id + 1);
-            if (num > max_id)
-                max_id = num;
+            int valid = 1;
+            for (int i = 1; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[1] != '\0')
+            {
+                int num = atoi(id + 1);
+                if (num > max_id)
+                    max_id = num;
+            }
         }
         current = current->next;
     }
@@ -463,7 +490,8 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char diagnosis[MAX_LINE_LEN];
             while (1)
             {
@@ -504,7 +532,8 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             }
             break;
         }
-        case 2: {
+        case 2:
+        {
             while (1)
             {
                 clear_screen();
@@ -662,7 +691,8 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             Prescription *pr_head = load_prescriptions_from_file();
             Drug *drug_head = load_drugs_from_file();
 

@@ -185,11 +185,24 @@ int generate_next_exam_id(Exam *head)
     Exam *current = head;
     while (current)
     {
-        if (strncmp(current->exam_id, "E", 1) == 0)
+        const char *id = current->exam_id;
+        if (id[0] == 'E')
         {
-            int num = atoi(current->exam_id + 1);
-            if (num > max_id)
-                max_id = num;
+            int valid = 1;
+            for (int i = 1; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[1] != '\0')
+            {
+                int num = atoi(id + 1);
+                if (num > max_id)
+                    max_id = num;
+            }
         }
         current = current->next;
     }
@@ -782,7 +795,8 @@ void query_exam_record()
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char exam_id[MAX_ID_LEN];
 
             printf("请输入检查ID(输入0返回): ");
@@ -820,7 +834,8 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 2: {
+        case 2:
+        {
             char visit_id[MAX_ID_LEN];
 
             printf("请输入看诊ID(输入0返回): ");
@@ -865,7 +880,8 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 3: {
+        case 3:
+        {
             char p_id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(p_id, sizeof(p_id));
@@ -909,7 +925,8 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 4: {
+        case 4:
+        {
             char d_id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(d_id, sizeof(d_id));

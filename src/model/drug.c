@@ -76,7 +76,14 @@ Drug *load_drugs_from_file()
             free(node);
             continue;
         }
-        node->price = (float)atof(token);
+        char *endptr = NULL;
+        float price_val = strtof(token, &endptr);
+        if (token[0] == '\0' || *endptr != '\0' || price_val < 0.0f)
+        {
+            free(node);
+            continue;
+        }
+        node->price = price_val;
 
         token = strtok(NULL, "|");
         if (!token)
@@ -84,7 +91,14 @@ Drug *load_drugs_from_file()
             free(node);
             continue;
         }
-        node->stock = atoi(token);
+        endptr = NULL;
+        long stock_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || stock_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->stock = (int)stock_val;
 
         token = strtok(NULL, "|");
         if (token)
@@ -148,11 +162,24 @@ int generate_next_drug_id(Drug *head)
     int max_id = 0;
     for (Drug *cur = head; cur; cur = cur->next)
     {
-        if (strncmp(cur->id, "DR", 2) == 0)
+        const char *id = cur->id;
+        if (strncmp(id, "DR", 2) == 0)
         {
-            int id_num = atoi(cur->id + 2);
-            if (id_num > max_id)
-                max_id = id_num;
+            int valid = 1;
+            for (int i = 2; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[2] != '\0')
+            {
+                int id_num = atoi(id + 2);
+                if (id_num > max_id)
+                    max_id = id_num;
+            }
         }
     }
     return max_id + 1;
@@ -225,15 +252,15 @@ Pharmacy *load_pharmacies_from_file()
 }
 
 /* 将药房数据保存到文件 */
-void save_pharmacies_to_file(Pharmacy *head)
+int save_pharmacies_to_file(Pharmacy *head)
 {
     char tmp_path[MAX_LINE_LEN];
     FILE *fp = safe_fopen_tmp(PHARMACIES_FILE, tmp_path, sizeof(tmp_path));
     if (!fp)
-        return;
+        return -1;
     for (Pharmacy *cur = head; cur; cur = cur->next)
         fprintf(fp, "%s|%s|%s\n", cur->id, cur->name, cur->location);
-    safe_fclose_commit(fp, tmp_path, PHARMACIES_FILE);
+    return safe_fclose_commit(fp, tmp_path, PHARMACIES_FILE);
 }
 
 /* 释放药房数据内存 */
@@ -262,11 +289,24 @@ int generate_next_pharmacy_id(Pharmacy *head)
     int max_id = 0;
     for (Pharmacy *cur = head; cur; cur = cur->next)
     {
-        if (strncmp(cur->id, "PH", 2) == 0)
+        const char *id = cur->id;
+        if (strncmp(id, "PH", 2) == 0)
         {
-            int id_num = atoi(cur->id + 2);
-            if (id_num > max_id)
-                max_id = id_num;
+            int valid = 1;
+            for (int i = 2; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[2] != '\0')
+            {
+                int id_num = atoi(id + 2);
+                if (id_num > max_id)
+                    max_id = id_num;
+            }
         }
     }
     return max_id + 1;
@@ -323,7 +363,14 @@ PharmacyDrug *load_pharmacy_drugs_from_file()
             free(node);
             continue;
         }
-        node->quantity = atoi(token);
+        char *endptr = NULL;
+        long quantity_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || quantity_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->quantity = (int)quantity_val;
 
         node->next = NULL;
         if (!head)
@@ -339,15 +386,15 @@ PharmacyDrug *load_pharmacy_drugs_from_file()
 }
 
 /* 将药房药品数据保存到文件 */
-void save_pharmacy_drugs_to_file(PharmacyDrug *head)
+int save_pharmacy_drugs_to_file(PharmacyDrug *head)
 {
     char tmp_path[MAX_LINE_LEN];
     FILE *fp = safe_fopen_tmp(PHARMACY_DRUGS_FILE, tmp_path, sizeof(tmp_path));
     if (!fp)
-        return;
+        return -1;
     for (PharmacyDrug *cur = head; cur; cur = cur->next)
         fprintf(fp, "%s|%s|%d\n", cur->pharmacy_id, cur->drug_id, cur->quantity);
-    safe_fclose_commit(fp, tmp_path, PHARMACY_DRUGS_FILE);
+    return safe_fclose_commit(fp, tmp_path, PHARMACY_DRUGS_FILE);
 }
 
 /* 释放药房药品数据内存 */
@@ -773,7 +820,8 @@ void delete_drug()
                     pd_cur = pd_cur->next;
                 }
             }
-            save_pharmacy_drugs_to_file(pd_head);
+            if (save_pharmacy_drugs_to_file(pd_head) != 0)
+                printf("保存药房药品关联失败！\n");
             free_pharmacy_drugs(pd_head);
 
             if (prev)
@@ -928,7 +976,8 @@ void update_drug()
                     for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
                         if (strcmp(pd->drug_id, drug->id) == 0)
                             pd->quantity = s;
-                    save_pharmacy_drugs_to_file(pd_head);
+                    if (save_pharmacy_drugs_to_file(pd_head) != 0)
+                        printf("保存药房药品关联失败！\n");
                     free_pharmacy_drugs(pd_head);
                     printf("更新成功！药房中该药品的库存已同步覆盖。\n");
                 }
@@ -1157,8 +1206,10 @@ void add_pharmacy()
         tail->next = new_node;
     }
 
-    save_pharmacies_to_file(head);
-    printf("药房添加成功！分配ID: %s\n", new_node->id);
+    if (save_pharmacies_to_file(head) != 0)
+        printf("保存药房信息失败！\n");
+    else
+        printf("药房添加成功！分配ID: %s\n", new_node->id);
     free_pharmacies(head);
     wait_enter();
     clear_screen();
@@ -1223,7 +1274,8 @@ void delete_pharmacy()
                     pd_cur = pd_cur->next;
                 }
             }
-            save_pharmacy_drugs_to_file(pd_head);
+            if (save_pharmacy_drugs_to_file(pd_head) != 0)
+                printf("保存药房药品关联失败！\n");
             free_pharmacy_drugs(pd_head);
 
             if (prev)
@@ -1231,9 +1283,10 @@ void delete_pharmacy()
             else
                 head = cur->next;
             free(cur);
-            save_pharmacies_to_file(head);
-
-            printf("药房删除成功！\n");
+            if (save_pharmacies_to_file(head) != 0)
+                printf("保存药房信息失败！\n");
+            else
+                printf("药房删除成功！\n");
             free_pharmacies(head);
             wait_enter();
             clear_screen();
@@ -1455,8 +1508,11 @@ void stock_in_pharmacy()
     // 同步增加药品总库存
     target_d->stock += add_qty;
 
-    save_pharmacy_drugs_to_file(pd_head);
-    if (save_drugs_to_file(d_head) != 0)
+    int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
+    int d_save_rc = save_drugs_to_file(d_head);
+    if (pd_save_rc != 0)
+        printf("保存药房药品关联失败！\n");
+    if (d_save_rc != 0)
         printf("保存药品信息失败！\n");
 
     printf("入库成功！药房 [%s] 新增药品 [%s] %d 件，最新总库存: %d\n", target_p->name, target_d->generic_name, add_qty,
@@ -1664,8 +1720,11 @@ void dispense_prescription_drug()
     target_pd->quantity -= qty;
     target_drug->stock -= qty;
 
-    save_pharmacy_drugs_to_file(pd_head);
-    if (save_drugs_to_file(d_head) != 0)
+    int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
+    int d_save_rc = save_drugs_to_file(d_head);
+    if (pd_save_rc != 0)
+        printf("保存药房药品关联失败！\n");
+    if (d_save_rc != 0)
         printf("保存药品信息失败！\n");
     else
         printf("\n处方发药成功！已从指定药房扣减库存。\n");

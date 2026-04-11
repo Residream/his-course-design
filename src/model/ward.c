@@ -72,7 +72,14 @@ Ward *load_wards_from_file(void)
             free(node);
             continue;
         }
-        node->capacity = atoi(token);
+        char *endptr = NULL;
+        long capacity_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || capacity_val < 0)
+        {
+            free(node);
+            continue;
+        }
+        node->capacity = (int)capacity_val;
 
         token = strtok(NULL, "|"); // occupied
         if (!token)
@@ -80,7 +87,14 @@ Ward *load_wards_from_file(void)
             free(node);
             continue;
         }
-        node->occupied = atoi(token);
+        endptr = NULL;
+        long occupied_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || occupied_val < 0 || occupied_val > node->capacity)
+        {
+            free(node);
+            continue;
+        }
+        node->occupied = (int)occupied_val;
 
         node->next = NULL;
         if (!head)
@@ -146,11 +160,24 @@ int generate_next_ward_id(Ward *head)
     int max_id = 0;
     for (Ward *cur = head; cur; cur = cur->next)
     {
-        if (cur->ward_id[0] == 'W')
+        const char *id = cur->ward_id;
+        if (id[0] == 'W')
         {
-            int n = atoi(cur->ward_id + 1);
-            if (n > max_id)
-                max_id = n;
+            int valid = 1;
+            for (int i = 1; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[1] != '\0')
+            {
+                int n = atoi(id + 1);
+                if (n > max_id)
+                    max_id = n;
+            }
         }
     }
     return max_id + 1;

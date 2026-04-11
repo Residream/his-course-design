@@ -183,11 +183,24 @@ int generate_next_prescription_id(Prescription *head)
     int max_id = 0;
     for (Prescription *cur = head; cur; cur = cur->next)
     {
-        if (strncmp(cur->pr_id, "PR", 2) == 0)
+        const char *id = cur->pr_id;
+        if (strncmp(id, "PR", 2) == 0)
         {
-            int id_num = atoi(cur->pr_id + 2);
-            if (id_num > max_id)
-                max_id = id_num;
+            int valid = 1;
+            for (int i = 2; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[2] != '\0')
+            {
+                int id_num = atoi(id + 2);
+                if (id_num > max_id)
+                    max_id = id_num;
+            }
         }
     }
     return max_id + 1;

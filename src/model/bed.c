@@ -55,7 +55,14 @@ Bed *load_beds_from_file(void)
             free(node);
             continue;
         }
-        node->bed_no = atoi(token);
+        char *endptr = NULL;
+        long bed_no_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || bed_no_val <= 0)
+        {
+            free(node);
+            continue;
+        }
+        node->bed_no = (int)bed_no_val;
 
         token = strtok(NULL, "|"); // status
         if (!token)
@@ -63,7 +70,14 @@ Bed *load_beds_from_file(void)
             free(node);
             continue;
         }
-        node->status = atoi(token);
+        endptr = NULL;
+        long status_val = strtol(token, &endptr, 10);
+        if (token[0] == '\0' || *endptr != '\0' || (status_val != 0 && status_val != 1))
+        {
+            free(node);
+            continue;
+        }
+        node->status = (int)status_val;
 
         node->next = NULL;
         if (!head)
@@ -136,11 +150,24 @@ int generate_next_bed_id(Bed *head)
     int max_id = 0;
     for (Bed *cur = head; cur; cur = cur->next)
     {
-        if (cur->bed_id[0] == 'B')
+        const char *id = cur->bed_id;
+        if (id[0] == 'B')
         {
-            int n = atoi(cur->bed_id + 1);
-            if (n > max_id)
-                max_id = n;
+            int valid = 1;
+            for (int i = 1; id[i] != '\0'; i++)
+            {
+                if (id[i] < '0' || id[i] > '9')
+                {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (valid && id[1] != '\0')
+            {
+                int n = atoi(id + 1);
+                if (n > max_id)
+                    max_id = n;
+            }
         }
     }
     return max_id + 1;
