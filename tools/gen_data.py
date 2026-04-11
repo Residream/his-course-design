@@ -18,65 +18,83 @@ NUM_HOSP_PATIENTS = 80
 NUM_DOCTORS = 30
 
 DEPARTMENTS = ["内科", "外科", "妇产科", "儿科", "急诊科"]
-WARD_NAMES = ["内科一病区", "内科二病区", "外科一病区", "外科二病区", "妇产科病区", "儿科病区", "急诊留观病区", "综合病区"]
 
-# 科室→优先病房亲和度映射 (按 WARD_NAMES 顺序生成的 ward_id)
+# 病房配置: (ID, 名称, 类型, 关联科室, 容量范围)
+WARD_DEFS = [
+    ("W0001", "内科一病区",   "普通", "内科",  (12, 16)),
+    ("W0002", "内科二病区",   "普通", "内科",  (10, 15)),
+    ("W0003", "外科一病区",   "普通", "外科",  (12, 18)),
+    ("W0004", "外科二病区",   "ICU",  "外科",  (8, 14)),
+    ("W0005", "妇产科病区",   "普通", "妇产科", (14, 20)),
+    ("W0006", "儿科病区",     "普通", "儿科",  (10, 14)),
+    ("W0007", "急诊留观病区", "ICU",  "急诊科", (10, 16)),
+    ("W0008", "综合病区",     "VIP",  "综合",  (10, 16)),
+]
+
+# 科室→优先病房亲和度映射
 DEPT_WARD_AFFINITY = {
-    "内科":   ["W0001", "W0002"],   # 内科一/二病区
-    "外科":   ["W0003", "W0004"],   # 外科一/二病区
-    "妇产科": ["W0005"],              # 妇产科病区
-    "儿科":   ["W0006"],              # 儿科病区
-    "急诊科": ["W0007"],              # 急诊留观病区
+    "内科":   ["W0001", "W0002"],
+    "外科":   ["W0003", "W0004"],
+    "妇产科": ["W0005"],
+    "儿科":   ["W0006"],
+    "急诊科": ["W0007"],
 }
-OVERFLOW_WARD = "W0008"               # 综合病区作为溢出缓冲
+OVERFLOW_WARD = "W0008"
 
 # 科室专属药品池 (id, 通用名, 商品名, 别名, 价格, 总库存)
 DRUG_DICT = {
     "内科": [
-        ("DR0001", "缬沙坦胶囊", "代文", "缬沙坦", 45.00, 1000),
-        ("DR0002", "氨氯地平片", "络活喜", "氨氯地平", 33.50, 800),
-        ("DR0003", "二甲双胍片", "格华止", "降糖药", 25.00, 1500),
-        ("DR0004", "兰索拉唑肠溶片", "达克普隆", "兰索拉唑", 40.00, 600),
-        ("DR0005", "阿托伐他汀钙片", "立普妥", "降脂药", 50.00, 900)
+        ("DR0001", "缬沙坦胶囊",       "代文",     "缬沙坦",     45.00, 1000),
+        ("DR0002", "氨氯地平片",       "络活喜",   "氨氯地平",   33.50, 800),
+        ("DR0003", "二甲双胍片",       "格华止",   "降糖药",     25.00, 1500),
+        ("DR0004", "兰索拉唑肠溶片",   "达克普隆", "兰索拉唑",   40.00, 600),
+        ("DR0005", "阿托伐他汀钙片",   "立普妥",   "降脂药",     50.00, 900),
+        ("DR0006", "美托洛尔缓释片",   "倍他乐克", "美托洛尔",   38.00, 700),
+        ("DR0007", "氯吡格雷片",       "波立维",   "抗血小板药", 62.00, 500),
     ],
     "外科": [
-        ("DR0006", "头孢克肟分散片", "世福素", "头孢", 32.00, 1200),
-        ("DR0007", "双氯芬酸钠缓释片", "扶他林", "止痛片", 28.00, 800),
-        ("DR0008", "阿莫西林胶囊", "阿莫仙", "阿莫西林", 15.50, 2000),
-        ("DR0009", "塞来昔布胶囊", "西乐葆", "塞来昔布", 45.50, 500),
-        ("DR0010", "莫匹罗星软膏", "百多邦", "消炎药膏", 18.00, 400)
+        ("DR0008", "头孢克肟分散片",   "世福素",   "头孢",       32.00, 1200),
+        ("DR0009", "双氯芬酸钠缓释片", "扶他林",   "止痛片",     28.00, 800),
+        ("DR0010", "阿莫西林胶囊",     "阿莫仙",   "阿莫西林",   15.50, 2000),
+        ("DR0011", "塞来昔布胶囊",     "西乐葆",   "塞来昔布",   45.50, 500),
+        ("DR0012", "莫匹罗星软膏",     "百多邦",   "消炎药膏",   18.00, 400),
+        ("DR0013", "左氧氟沙星片",     "可乐必妥", "左氧",       35.00, 900),
+        ("DR0014", "氨甲环酸片",       "妥塞敏",   "止血药",     29.00, 600),
     ],
     "妇产科": [
-        ("DR0011", "叶酸片", "斯利安", "叶酸", 12.00, 1000),
-        ("DR0012", "黄体酮胶囊", "益玛欣", "黄体酮", 35.00, 600),
-        ("DR0013", "硫酸亚铁片", "速力菲", "铁剂", 22.00, 800),
-        ("DR0014", "甲硝唑栓", "达克宁", "甲硝唑", 18.50, 500),
-        ("DR0015", "维生素E软胶囊", "来益", "维E", 25.00, 600)
+        ("DR0015", "叶酸片",           "斯利安",   "叶酸",       12.00, 1000),
+        ("DR0016", "黄体酮胶囊",       "益玛欣",   "黄体酮",     35.00, 600),
+        ("DR0017", "硫酸亚铁片",       "速力菲",   "铁剂",       22.00, 800),
+        ("DR0018", "甲硝唑栓",         "达克宁",   "甲硝唑",     18.50, 500),
+        ("DR0019", "维生素E软胶囊",    "来益",     "维E",        25.00, 600),
+        ("DR0020", "地屈孕酮片",       "达芙通",   "孕酮",       48.00, 400),
     ],
     "儿科": [
-        ("DR0016", "对乙酰氨基酚滴剂", "泰诺林", "退烧药", 20.00, 800),
-        ("DR0017", "布洛芬混悬液", "美林", "布洛芬", 25.00, 1000),
-        ("DR0018", "盐酸氨溴索溶液", "沐舒坦", "化痰药", 28.00, 600),
-        ("DR0019", "氯雷他定糖浆", "开瑞坦", "抗过敏药", 30.00, 500),
-        ("DR0020", "枯草杆菌颗粒", "妈咪爱", "益生菌", 35.00, 700)
+        ("DR0021", "对乙酰氨基酚滴剂", "泰诺林",   "退烧药",     20.00, 800),
+        ("DR0022", "布洛芬混悬液",     "美林",     "布洛芬",     25.00, 1000),
+        ("DR0023", "盐酸氨溴索溶液",   "沐舒坦",   "化痰药",     28.00, 600),
+        ("DR0024", "氯雷他定糖浆",     "开瑞坦",   "抗过敏药",   30.00, 500),
+        ("DR0025", "枯草杆菌颗粒",     "妈咪爱",   "益生菌",     35.00, 700),
+        ("DR0026", "蒙脱石散",         "思密达",   "止泻药",     16.00, 900),
     ],
     "急诊科": [
-        ("DR0021", "盐酸肾上腺素注射液", "肾上腺素", "副肾碱", 15.00, 200),
-        ("DR0022", "硝酸甘油片", "硝酸甘油", "硝甘", 12.50, 300),
-        ("DR0023", "硫酸吗啡注射液", "吗啡", "吗啡", 55.00, 100)
+        ("DR0027", "盐酸肾上腺素注射液", "肾上腺素", "副肾碱",   15.00, 200),
+        ("DR0028", "硝酸甘油片",       "硝酸甘油", "硝甘",       12.50, 300),
+        ("DR0029", "硫酸吗啡注射液",   "吗啡",     "吗啡",       55.00, 100),
+        ("DR0030", "地西泮注射液",     "安定",     "安定",       8.00,  250),
     ],
     "通用": [
-        ("DR0024", "0.9%氯化钠注射液", "生理盐水", "盐水", 5.50, 5000),
-        ("DR0025", "5%葡萄糖注射液", "葡萄糖", "糖水", 6.00, 5000),
-        ("DR0026", "维生素C片", "维C", "维C", 10.00, 2000),
-        ("DR0027", "布洛芬缓释胶囊", "芬必得", "布洛芬", 22.00, 1500),
-        ("DR0028", "对乙酰氨基酚片", "泰诺林", "退烧药", 18.00, 1000)
+        ("DR0031", "0.9%氯化钠注射液", "生理盐水", "盐水",       5.50,  5000),
+        ("DR0032", "5%葡萄糖注射液",   "葡萄糖",   "糖水",       6.00,  5000),
+        ("DR0033", "维生素C片",        "维C",      "维C",        10.00, 2000),
+        ("DR0034", "布洛芬缓释胶囊",   "芬必得",   "布洛芬",     22.00, 1500),
+        ("DR0035", "对乙酰氨基酚片",   "泰诺林",   "退烧药",     18.00, 1000),
     ]
 }
 
-# 药房设定 (ID, 名称, 位置)
+# 药房设定
 PHARMACIES = [
-    ("PH0001", "门诊西药房", "门诊楼一楼"),
+    ("PH0001", "门诊西药房",   "门诊楼一楼"),
     ("PH0002", "急诊专属药房", "急诊楼大厅"),
     ("PH0003", "中心住院药房", "住院部二楼")
 ]
@@ -115,24 +133,20 @@ def generate_all():
     admins = [("root", root_hash, root_salt)]
     departments = [(d,) for d in DEPARTMENTS]
 
-    # 2. 药品、药房与库存关联 (附带 department)
+    # 2. 药品、药房与库存关联
     drugs = []
     pharmacies = PHARMACIES
     pharmacy_drugs = []
     
     for dept, dept_drugs in DRUG_DICT.items():
         for d in dept_drugs:
-            # d 是 (id, generic_name, trade_name, alias, price, stock)
-            # 拼接科室字段形成新的 tuple: (id, generic_name, ..., stock, department)
             drugs.append(d + (dept,)) 
             drug_id = d[0]
             total_stock = d[5]
             
-            # 按科室特性分配库存
             if dept == "急诊科":
                 pharmacy_drugs.append(("PH0002", drug_id, total_stock))
             elif dept == "通用":
-                # 通用药分配给所有药房
                 s1 = int(total_stock * 0.4)
                 s2 = int(total_stock * 0.3)
                 s3 = total_stock - s1 - s2
@@ -145,7 +159,7 @@ def generate_all():
                 pharmacy_drugs.append(("PH0001", drug_id, stock_out))
                 pharmacy_drugs.append(("PH0003", drug_id, stock_in))
 
-    # 3. 生成医生 (Doctor) - 建立 ID 到 科室的映射
+    # 3. 生成医生
     doctors = []
     doc_dept_map = {}
     for i in range(1, NUM_DOCTORS + 1):
@@ -156,7 +170,7 @@ def generate_all():
         doctors.append((did, random_name(gender), gender, dept, pwd_hash, salt_hex))
         doc_dept_map[did] = dept
 
-    # 4. 生成患者 (Patient)
+    # 4. 生成患者
     patients = []
     for i in range(1, NUM_PATIENTS + 1):
         pid = f"P{i:04d}"
@@ -164,14 +178,14 @@ def generate_all():
         pwd_hash, salt_hex = hash_password(f"p{i:04d}")
         patients.append((pid, random_name(gender), gender, random.randint(5, 85), pwd_hash, salt_hex))
 
-    # 5. 生成病房与床位 (Ward & Bed)
+    # 5. 生成病房与床位 (新格式: ward_id|name|type|department|capacity|occupied)
     wards = []
     beds = []
     bed_seq = 1
-    for i, w_name in enumerate(WARD_NAMES, 1):
-        wid = f"W{i:04d}"
-        capacity = random.randint(10, 20)
-        wards.append({"ward_id": wid, "name": w_name, "capacity": capacity, "occupied": 0})
+    for wid, w_name, w_type, w_dept, cap_range in WARD_DEFS:
+        capacity = random.randint(*cap_range)
+        wards.append({"ward_id": wid, "name": w_name, "type": w_type, "department": w_dept,
+                       "capacity": capacity, "occupied": 0})
         for b_no in range(1, capacity + 1):
             beds.append({"bed_id": f"B{bed_seq:04d}", "ward_id": wid, "bed_no": b_no, "status": 0})
             bed_seq += 1
@@ -208,7 +222,6 @@ def generate_all():
                 if v_status == 1:
                     hosp_candidates.setdefault(pid, []).append((vid, visit_dt, doc_dept))
 
-                    # 检查
                     if random.random() < 0.8:
                         eid = f"E{exam_seq:04d}"
                         item = random.choice(["血常规", "尿常规", "心电图", "胸部X线", "肝功能"])
@@ -216,21 +229,17 @@ def generate_all():
                         exams.append((eid, vid, item, result))
                         exam_seq += 1
 
-                    # 处方（专属科室药 + 通用药 混合开具）
                     if random.random() < 0.90:
                         num_drugs = random.randint(1, 3)
-                        
-                        # 把该医生的专属科室药和通用药合并成可选池
                         dept_drug_pool = DRUG_DICT.get(doc_dept, []) + DRUG_DICT.get("通用", [])
                         if not dept_drug_pool:
-                            dept_drug_pool = DRUG_DICT["内科"] # 兜底
+                            dept_drug_pool = DRUG_DICT["内科"]
                             
                         chosen_drugs = random.sample(dept_drug_pool, min(num_drugs, len(dept_drug_pool)))
                         
                         for drug in chosen_drugs:
                             prid = f"PR{pr_seq:04d}"
                             drug_id = drug[0]
-                            # 根据不同药品类型生成更拟真的用法
                             if "注射液" in drug[1]:
                                 dose, freq = "250ml", "静脉滴注"
                             elif "软膏" in drug[1] or "栓" in drug[1]:
@@ -241,12 +250,11 @@ def generate_all():
                             prescriptions.append((prid, vid, did, pid, drug_id, dose, freq))
                             pr_seq += 1
 
-    # 7. 生成住院（按科室亲和度分配病房，允许同一患者多次住院）
+    # 7. 生成住院
     hospitalizations = []
     hosp_seq = 1
     hosp_pool_pids = [f"P{i:04d}" for i in range(NUM_PATIENTS - NUM_HOSP_PATIENTS + 1, NUM_PATIENTS + 1)]
 
-    # 按 ward_id 索引空床位，便于按病房亲和度查找
     free_beds_by_ward = {}
     for b in beds:
         if b["status"] == 0:
@@ -255,7 +263,6 @@ def generate_all():
         random.shuffle(free_beds_by_ward[wid])
 
     def pick_bed_for_dept(dept):
-        """按科室亲和度选择空床：70% 优先对口病房，否则溢出到综合病区。"""
         primary_wards = DEPT_WARD_AFFINITY.get(dept, [])[:]
         random.shuffle(primary_wards)
         prefer_primary = random.random() < 0.7
@@ -269,7 +276,6 @@ def generate_all():
             pool = free_beds_by_ward.get(wid)
             if pool:
                 return pool.pop()
-        # 所有对口/溢出病房都满，取任意空床
         for pool in free_beds_by_ward.values():
             if pool:
                 return pool.pop()
@@ -279,10 +285,8 @@ def generate_all():
         candidates = hosp_candidates.get(pid)
         if not candidates:
             continue
-        # 按时间排序，保证复诊住院先后顺序合理
         sorted_cands = sorted(candidates, key=lambda c: c[1])
-        # 跟踪该患者上一次住院是否已结束，避免重叠入院
-        in_hosp_until = None   # None=可入院 / "ongoing"=尚在院 / datetime=上次出院时间
+        in_hosp_until = None
 
         for vid, visit_dt, doc_dept in sorted_cands:
             if in_hosp_until == "ongoing":
@@ -292,7 +296,7 @@ def generate_all():
 
             bed = pick_bed_for_dept(doc_dept)
             if bed is None:
-                break   # 所有病房都满，停止为该患者安排住院
+                break
 
             bed["status"] = 1
             for w in wards:
@@ -304,7 +308,6 @@ def generate_all():
             admit_dt = visit_dt + timedelta(hours=random.randint(1, 5))
             h_status = random.choices([0, 1], weights=[40, 60])[0]
             if h_status == 1:
-                # 按概率分布生成不同住院时长：短/常规/中/长/超长
                 stay_bucket = random.choices([0, 1, 2, 3, 4], weights=[20, 35, 25, 15, 5])[0]
                 stay_days = [random.randint(1, 3),
                              random.randint(4, 7),
@@ -316,7 +319,6 @@ def generate_all():
                     discharge_dt = datetime.now() - timedelta(hours=1)
                 discharge_ts = int(discharge_dt.timestamp())
 
-                # 出院后归还床位到空床池
                 bed["status"] = 0
                 free_beds_by_ward.setdefault(bed["ward_id"], []).append(bed)
                 for w in wards:
@@ -340,13 +342,11 @@ def generate_all():
                 if isinstance(row, dict):
                     f.write(separator.join(str(v) for v in row.values()) + "\n")
                 else:
-                    # 针对浮点数价格保留两位小数
                     formatted_row = [f"{x:.2f}" if isinstance(x, float) else str(x) for x in row]
                     f.write(separator.join(formatted_row) + "\n")
         print(f"[{'OK':<4}] {filename:<22} 共生成 {len(data_list):>4} 条记录")
 
     print("开始生成全关联测试数据...")
-    # 全部统一使用 | 分隔符
     write_txt("admins.txt", admins, "|")
     write_txt("departments.txt", departments, "|")
     write_txt("doctors.txt", doctors, "|")
@@ -362,7 +362,34 @@ def generate_all():
     write_txt("pharmacies.txt", pharmacies, "|")
     write_txt("pharmacy_drugs.txt", pharmacy_drugs, "|")
     
-    print("生成完毕！科室与药品开具逻辑、药房库存均已完全适配。")
+    # ================= 输出演示账号速查表 =================
+    print("\n" + "=" * 60)
+    print("演示账号速查表")
+    print("=" * 60)
+    print(f"{'角色':<8} {'账号':<12} {'密码':<12} {'备注'}")
+    print("-" * 60)
+    print(f"{'管理员':<8} {'root':<12} {'root':<12} {'全权限'}")
+    for i, dept in enumerate(DEPARTMENTS, 1):
+        did = f"D{i:04d}"
+        pwd = f"d{i:04d}"
+        doc = doctors[i-1]
+        print(f"{'医生':<8} {did:<12} {pwd:<12} {dept} - {doc[1]}")
+    for i in [1, 51, 100]:
+        pid = f"P{i:04d}"
+        pwd = f"p{i:04d}"
+        pat = patients[i-1]
+        print(f"{'患者':<8} {pid:<12} {pwd:<12} {pat[1]}({pat[2]},{pat[3]}岁)")
+    print("=" * 60)
+    
+    # 统计摘要
+    print(f"\n数据统计: {len(patients)}患者 {len(doctors)}医生 {len(drugs)}药品 "
+          f"{len(registrations)}挂号 {len(visits)}看诊 {len(exams)}检查 "
+          f"{len(prescriptions)}处方 {len(hospitalizations)}住院")
+    
+    ongoing = sum(1 for h in hospitalizations if h[7] == 0)
+    discharged = sum(1 for h in hospitalizations if h[7] == 1)
+    print(f"住院: {ongoing}在院 + {discharged}已出院 = {len(hospitalizations)}总计")
+    print("生成完毕！")
 
 if __name__ == "__main__":
     generate_all()
