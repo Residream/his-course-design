@@ -245,10 +245,10 @@ void print_doctor(Doctor *d, int id_w, int name_w, int gen_w, int dept_w)
 /* 计算医生信息表格列宽 */
 void calc_doctor_width(Doctor *head, int *id_w, int *name_w, int *gen_w, int *dept_w)
 {
-    *id_w = 6;
-    *name_w = 4;
-    *gen_w = 6;
-    *dept_w = 10;
+    *id_w = str_width("医生ID");
+    *name_w = str_width("姓名");
+    *gen_w = str_width("性别");
+    *dept_w = str_width("科室");
 
     for (Doctor *d = head; d; d = d->next)
     {
@@ -641,7 +641,8 @@ void update_doctor()
         switch (select)
         {
         /* 更新姓名 */
-        case 1: {
+        case 1:
+        {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -676,7 +677,8 @@ void update_doctor()
             break;
         }
         /* 更新性别 */
-        case 2: {
+        case 2:
+        {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -706,7 +708,8 @@ void update_doctor()
             break;
         }
         /* 更新科室 */
-        case 3: {
+        case 3:
+        {
             char department[MAX_INPUT_LEN];
             while (1)
             {
@@ -737,7 +740,8 @@ void update_doctor()
             break;
         }
         /* 更新密码 */
-        case 4: {
+        case 4:
+        {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -1048,7 +1052,8 @@ void doctor_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1: {
+        case 1:
+        {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1083,7 +1088,8 @@ void doctor_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2: {
+        case 2:
+        {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1113,7 +1119,8 @@ void doctor_update_my_info()
             break;
         }
         /* 更新科室 */
-        case 3: {
+        case 3:
+        {
             char department[MAX_INPUT_LEN];
             while (1)
             {
@@ -1144,7 +1151,8 @@ void doctor_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4: {
+        case 4:
+        {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];

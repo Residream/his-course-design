@@ -248,10 +248,10 @@ void print_patient(Patient *p, int id_w, int name_w, int gen_w, int age_w)
 /* 计算患者信息表格列宽 */
 void calc_patient_width(Patient *head, int *id_w, int *name_w, int *gen_w, int *age_w)
 {
-    *id_w = 6;
-    *name_w = 4;
-    *gen_w = 6;
-    *age_w = 3;
+    *id_w = str_width("患者ID");
+    *name_w = str_width("姓名");
+    *gen_w = str_width("性别");
+    *age_w = str_width("年龄");
     for (Patient *p = head; p; p = p->next)
     {
         int w;
