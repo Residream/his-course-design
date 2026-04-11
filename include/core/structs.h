@@ -86,8 +86,10 @@ typedef struct Ward
 {
     char ward_id[MAX_ID_LEN];
     char name[MAX_NAME_LEN];
-    int capacity; // 床位数量
-    int occupied; // 已占用床位数量
+    char type[MAX_NAME_LEN];       // 病房类型: ICU/普通/VIP
+    char department[MAX_NAME_LEN]; // 关联科室
+    int capacity;                  // 床位数量
+    int occupied;                  // 已占用床位数量
 
     struct Ward *next;
 } Ward;

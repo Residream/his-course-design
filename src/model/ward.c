@@ -50,6 +50,22 @@ Ward *load_wards_from_file(void)
         }
         strncpy(node->name, token, sizeof(node->name) - 1);
 
+        token = strtok(NULL, "|"); // type
+        if (!token)
+        {
+            free(node);
+            continue;
+        }
+        strncpy(node->type, token, sizeof(node->type) - 1);
+
+        token = strtok(NULL, "|"); // department
+        if (!token)
+        {
+            free(node);
+            continue;
+        }
+        strncpy(node->department, token, sizeof(node->department) - 1);
+
         token = strtok(NULL, "|"); // capacity
         if (!token)
         {
@@ -89,7 +105,8 @@ int save_wards_to_file(Ward *head)
         return -1;
 
     for (Ward *cur = head; cur; cur = cur->next)
-        fprintf(fp, "%s|%s|%d|%d\n", cur->ward_id, cur->name, cur->capacity, cur->occupied);
+        fprintf(fp, "%s|%s|%s|%s|%d|%d\n", cur->ward_id, cur->name, cur->type, cur->department, cur->capacity,
+                cur->occupied);
 
     return safe_fclose_commit(fp, tmp_path, WARDS_FILE);
 }
@@ -164,7 +181,7 @@ Ward *get_nth_ward(Ward *head, int n)
 }
 
 /* 打印病房信息行 */
-void print_ward(Ward *w, int id_w, int name_w, int cap_w, int occ_w)
+void print_ward(Ward *w, int id_w, int name_w, int type_w, int dept_w, int cap_w, int occ_w)
 {
     char cap[16], occ[16];
     snprintf(cap, sizeof(cap), "%d", w->capacity);
@@ -175,6 +192,10 @@ void print_ward(Ward *w, int id_w, int name_w, int cap_w, int occ_w)
     printf(" | ");
     print_align(w->name, name_w);
     printf(" | ");
+    print_align(w->type, type_w);
+    printf(" | ");
+    print_align(w->department, dept_w);
+    printf(" | ");
     print_align(cap, cap_w);
     printf(" | ");
     print_align(occ, occ_w);
@@ -182,29 +203,39 @@ void print_ward(Ward *w, int id_w, int name_w, int cap_w, int occ_w)
 }
 
 /* 打印病房表头 */
-void print_ward_header(int id_w, int name_w, int cap_w, int occ_w)
+void print_ward_header(int id_w, int name_w, int type_w, int dept_w, int cap_w, int occ_w)
 {
-    print_ward_line(id_w, name_w, cap_w, occ_w);
+    print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
     printf("| ");
     print_align("病房ID", id_w);
     printf(" | ");
     print_align("病房名称", name_w);
     printf(" | ");
+    print_align("类型", type_w);
+    printf(" | ");
+    print_align("科室", dept_w);
+    printf(" | ");
     print_align("床位总数", cap_w);
     printf(" | ");
     print_align("已占用", occ_w);
     printf(" |\n");
-    print_ward_line(id_w, name_w, cap_w, occ_w);
+    print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
 }
 
 /* 打印病房分隔线 */
-void print_ward_line(int id_w, int name_w, int cap_w, int occ_w)
+void print_ward_line(int id_w, int name_w, int type_w, int dept_w, int cap_w, int occ_w)
 {
     printf("+");
     for (int i = 0; i < id_w + 2; i++)
         printf("-");
     printf("+");
     for (int i = 0; i < name_w + 2; i++)
+        printf("-");
+    printf("+");
+    for (int i = 0; i < type_w + 2; i++)
+        printf("-");
+    printf("+");
+    for (int i = 0; i < dept_w + 2; i++)
         printf("-");
     printf("+");
     for (int i = 0; i < cap_w + 2; i++)
@@ -216,10 +247,12 @@ void print_ward_line(int id_w, int name_w, int cap_w, int occ_w)
 }
 
 /* 计算病房表格列宽 */
-void calc_ward_width(Ward *head, int *id_w, int *name_w, int *cap_w, int *occ_w)
+void calc_ward_width(Ward *head, int *id_w, int *name_w, int *type_w, int *dept_w, int *cap_w, int *occ_w)
 {
     *id_w = str_width("病房ID");
     *name_w = str_width("病房名称");
+    *type_w = str_width("类型");
+    *dept_w = str_width("科室");
     *cap_w = str_width("床位总数");
     *occ_w = str_width("已占用");
 
@@ -236,6 +269,12 @@ void calc_ward_width(Ward *head, int *id_w, int *name_w, int *cap_w, int *occ_w)
         width = str_width(w->name);
         if (width > *name_w)
             *name_w = width;
+        width = str_width(w->type);
+        if (width > *type_w)
+            *type_w = width;
+        width = str_width(w->department);
+        if (width > *dept_w)
+            *dept_w = width;
         width = str_width(cap);
         if (width > *cap_w)
             *cap_w = width;
@@ -250,12 +289,15 @@ void calc_ward_width(Ward *head, int *id_w, int *name_w, int *cap_w, int *occ_w)
  */
 
 /* 创建病房 */
-Ward create_ward(const char *ward_id, const char *name, int capacity, int occupied)
+Ward create_ward(const char *ward_id, const char *name, const char *type, const char *department, int capacity,
+                 int occupied)
 {
     Ward w;
     memset(&w, 0, sizeof(Ward));
     strncpy(w.ward_id, ward_id, sizeof(w.ward_id) - 1);
     strncpy(w.name, name, sizeof(w.name) - 1);
+    strncpy(w.type, type, sizeof(w.type) - 1);
+    strncpy(w.department, department, sizeof(w.department) - 1);
     w.capacity = capacity;
     w.occupied = occupied;
     w.next = NULL;
@@ -288,6 +330,8 @@ void append_ward(Ward **head, Ward *new_ward)
 void add_ward()
 {
     char name[MAX_NAME_LEN];
+    char type[MAX_NAME_LEN];
+    char department[MAX_NAME_LEN];
     int capacity;
 
     /* 病房名称 */
@@ -307,6 +351,47 @@ void add_ward()
         if (!is_all_chinese_utf8(name))
         {
             printf("输入错误！病房名称只能包含汉字，请重新输入。\n");
+            continue;
+        }
+        break;
+    }
+
+    /* 病房类型 */
+    while (1)
+    {
+        printf("请选择病房类型(1=ICU 2=普通 3=VIP，输入0返回): ");
+        char choice[MAX_INPUT_LEN];
+        safe_input(choice, sizeof(choice));
+
+        if (strcmp(choice, "0") == 0)
+            return;
+
+        if (strcmp(choice, "1") == 0)
+            strncpy(type, "ICU", sizeof(type) - 1);
+        else if (strcmp(choice, "2") == 0)
+            strncpy(type, "普通", sizeof(type) - 1);
+        else if (strcmp(choice, "3") == 0)
+            strncpy(type, "VIP", sizeof(type) - 1);
+        else
+        {
+            printf("输入错误！请输入1、2或3。\n");
+            continue;
+        }
+        break;
+    }
+
+    /* 关联科室 */
+    while (1)
+    {
+        printf("请输入关联科室名称(输入0返回): ");
+        safe_input(department, sizeof(department));
+
+        if (strcmp(department, "0") == 0)
+            return;
+
+        if (department[0] == '\0')
+        {
+            printf("输入错误！科室名称不能为空，请重新输入。\n");
             continue;
         }
         break;
@@ -345,7 +430,7 @@ void add_ward()
         return;
     }
 
-    *new_node = create_ward(ward_id, name, capacity, 0);
+    *new_node = create_ward(ward_id, name, type, department, capacity, 0);
     append_ward(&w_head, new_node);
 
     if (save_wards_to_file(w_head) != 0)
@@ -385,10 +470,11 @@ void delete_ward()
                 return;
             }
 
-            printf("找到病房: %s (%s)，确定要删除吗？(y/n): ", current->name, current->ward_id);
+            printf("找到病房: %s (%s)，类型: %s，科室: %s，确定要删除吗？(y/n): ", current->name, current->ward_id,
+                   current->type, current->department);
             char confirm[MAX_INPUT_LEN];
             safe_input(confirm, sizeof(confirm));
-            if (strcmp(confirm, "n") == 0 || strcmp(confirm, "N") == 0) // 用户输入n/N取消删除
+            if (strcmp(confirm, "n") == 0 || strcmp(confirm, "N") == 0)
             {
                 printf("已取消删除。\n");
                 free_wards(w_head);
@@ -396,8 +482,7 @@ void delete_ward()
                 clear_screen();
                 return;
             }
-            else if (strcmp(confirm, "y") != 0 &&
-                     strcmp(confirm, "Y") != 0) // 用户输入非y/Y/n/N的其他内容，视为无效输入并取消删除
+            else if (strcmp(confirm, "y") != 0 && strcmp(confirm, "Y") != 0)
             {
                 printf("输入无效，已取消删除。\n");
                 free_wards(w_head);
@@ -405,9 +490,8 @@ void delete_ward()
                 clear_screen();
                 return;
             }
-            else // 用户输入y/Y确认删除
+            else
             {
-                // 检查是否有关联的床位记录
                 Bed *b_head = load_beds_from_file();
                 int has_bed = 0;
                 for (Bed *b = b_head; b; b = b->next)
@@ -469,15 +553,15 @@ void show_all_wards()
     }
     Ward *current = w_head;
     printf("所有病房信息:\n");
-    int id_w, name_w, cap_w, occ_w;
-    calc_ward_width(w_head, &id_w, &name_w, &cap_w, &occ_w);
-    print_ward_header(id_w, name_w, cap_w, occ_w);
+    int id_w, name_w, type_w, dept_w, cap_w, occ_w;
+    calc_ward_width(w_head, &id_w, &name_w, &type_w, &dept_w, &cap_w, &occ_w);
+    print_ward_header(id_w, name_w, type_w, dept_w, cap_w, occ_w);
     while (current)
     {
-        print_ward(current, id_w, name_w, cap_w, occ_w);
+        print_ward(current, id_w, name_w, type_w, dept_w, cap_w, occ_w);
         current = current->next;
     }
-    print_ward_line(id_w, name_w, cap_w, occ_w);
+    print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
     free_wards(w_head);
     wait_enter();
     clear_screen();

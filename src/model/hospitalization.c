@@ -570,12 +570,12 @@ void doctor_admit_patient_hospitalization(const char *v_id)
 
                 printf("当前医生科室：%s\n", my_dept);
 
-                int id_w, name_w, cap_w, occ_w;
-                calc_ward_width(w_head, &id_w, &name_w, &cap_w, &occ_w);
-                print_ward_header(id_w, name_w, cap_w, occ_w);
+                int w_id_w, w_name_w, w_type_w, w_dept_w, w_cap_w, w_occ_w;
+                calc_ward_width(w_head, &w_id_w, &w_name_w, &w_type_w, &w_dept_w, &w_cap_w, &w_occ_w);
+                print_ward_header(w_id_w, w_name_w, w_type_w, w_dept_w, w_cap_w, w_occ_w);
                 for (Ward *w = w_head; w; w = w->next)
-                    print_ward(w, id_w, name_w, cap_w, occ_w);
-                print_ward_line(id_w, name_w, cap_w, occ_w);
+                    print_ward(w, w_id_w, w_name_w, w_type_w, w_dept_w, w_cap_w, w_occ_w);
+                print_ward_line(w_id_w, w_name_w, w_type_w, w_dept_w, w_cap_w, w_occ_w);
 
                 char preferred_ward_id[MAX_ID_LEN];
                 preferred_ward_id[0] = '\0';
@@ -615,27 +615,14 @@ void doctor_admit_patient_hospitalization(const char *v_id)
                     {
                         const char *auto_pref_ward_id = NULL;
 
-                        /* 提取科室关键词 */
-                        char dept_key[32] = {0};
-                        if (me && me->department[0] != '\0')
-                        {
-                            strncpy(dept_key, me->department, sizeof(dept_key) - 1);
-
-                            char *pos = strstr(dept_key, "科");
-                            if (pos)
-                            {
-                                *pos = '\0'; // 截断在“科”字处，提取前半部分作为关键词
-                            }
-                        }
-
-                        /* 模糊匹配病房 */
+                        /* 按科室字段匹配病房 */
                         if (preferred_ward_id[0] == '\0')
                         {
-                            if (me)
+                            if (me && me->department[0] != '\0')
                             {
                                 for (Ward *w = w_head; w; w = w->next)
                                 {
-                                    if (strstr(w->name, dept_key) != NULL && w->occupied < w->capacity)
+                                    if (strcmp(w->department, me->department) == 0 && w->occupied < w->capacity)
                                     {
                                         auto_pref_ward_id = w->ward_id;
                                         break;
@@ -952,28 +939,15 @@ void add_hospitalization_record()
         {
             const char *auto_pref_ward_id = NULL;
 
-            /* 提取科室关键词 */
-            char dept_key[32] = {0};
-            Doctor *me = find_doctor_by_d_id(d_head, reg->d_id);
-            if (me && me->department[0] != '\0')
-            {
-                strncpy(dept_key, me->department, sizeof(dept_key) - 1);
-
-                char *pos = strstr(dept_key, "科");
-                if (pos)
-                {
-                    *pos = '\0'; // 截断在“科”字处，提取前半部分作为关键词
-                }
-            }
-
-            /* 模糊匹配病房 */
+            /* 按科室字段匹配病房 */
             if (preferred_ward_id[0] == '\0')
             {
-                if (me)
+                Doctor *doc = find_doctor_by_d_id(d_head, reg->d_id);
+                if (doc && doc->department[0] != '\0')
                 {
                     for (Ward *w = w_head; w; w = w->next)
                     {
-                        if (strstr(w->name, dept_key) != NULL && w->occupied < w->capacity)
+                        if (strcmp(w->department, doc->department) == 0 && w->occupied < w->capacity)
                         {
                             auto_pref_ward_id = w->ward_id;
                             break;
@@ -1262,7 +1236,7 @@ void update_hospitalization_record(void)
             {
                 while (1)
                 {
-                    int id_w, name_w, cap_w, occ_w;
+                    int id_w, name_w, type_w, dept_w, cap_w, occ_w;
                     char new_ward_id[MAX_ID_LEN];
 
                     clear_screen();
@@ -1271,11 +1245,11 @@ void update_hospitalization_record(void)
                                           in_w, out_w, st_w);
                     print_hospitalization_line(h_w, v_w, p_w, ward_w, bed_w, in_w, out_w, st_w);
 
-                    calc_ward_width(w_head, &id_w, &name_w, &cap_w, &occ_w);
-                    print_ward_header(id_w, name_w, cap_w, occ_w);
+                    calc_ward_width(w_head, &id_w, &name_w, &type_w, &dept_w, &cap_w, &occ_w);
+                    print_ward_header(id_w, name_w, type_w, dept_w, cap_w, occ_w);
                     for (Ward *w = w_head; w; w = w->next)
-                        print_ward(w, id_w, name_w, cap_w, occ_w);
-                    print_ward_line(id_w, name_w, cap_w, occ_w);
+                        print_ward(w, id_w, name_w, type_w, dept_w, cap_w, occ_w);
+                    print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
 
                     printf("请输入要更新的病房ID(输入0返回): ");
                     safe_input(new_ward_id, sizeof(new_ward_id));

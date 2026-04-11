@@ -335,14 +335,14 @@ void add_bed()
     {
         clear_screen();
         printf("===== 可用病房列表 =====\n");
-        int id_w, name_w, cap_w, occ_w;
-        calc_ward_width(w_head, &id_w, &name_w, &cap_w, &occ_w);
-        print_ward_header(id_w, name_w, cap_w, occ_w);
+        int id_w, name_w, type_w, dept_w, cap_w, occ_w;
+        calc_ward_width(w_head, &id_w, &name_w, &type_w, &dept_w, &cap_w, &occ_w);
+        print_ward_header(id_w, name_w, type_w, dept_w, cap_w, occ_w);
         for (Ward *w = w_head; w; w = w->next)
         {
-            print_ward(w, id_w, name_w, cap_w, occ_w);
+            print_ward(w, id_w, name_w, type_w, dept_w, cap_w, occ_w);
         }
-        print_ward_line(id_w, name_w, cap_w, occ_w);
+        print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
 
         printf("请输入要添加床位的病房ID(输入0返回): ");
         safe_input(ward_id, sizeof(ward_id));
@@ -470,14 +470,14 @@ void delete_bed()
     {
         clear_screen();
         printf("===== 选择要操作的病房 =====\n");
-        int id_w, name_w, cap_w, occ_w;
-        calc_ward_width(w_head, &id_w, &name_w, &cap_w, &occ_w);
-        print_ward_header(id_w, name_w, cap_w, occ_w);
+        int id_w, name_w, type_w, dept_w, cap_w, occ_w;
+        calc_ward_width(w_head, &id_w, &name_w, &type_w, &dept_w, &cap_w, &occ_w);
+        print_ward_header(id_w, name_w, type_w, dept_w, cap_w, occ_w);
         for (Ward *w = w_head; w; w = w->next)
         {
-            print_ward(w, id_w, name_w, cap_w, occ_w);
+            print_ward(w, id_w, name_w, type_w, dept_w, cap_w, occ_w);
         }
-        print_ward_line(id_w, name_w, cap_w, occ_w);
+        print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
 
         printf("请输入要操作的病房ID(输入0返回): ");
         safe_input(ward_id, sizeof(ward_id));
