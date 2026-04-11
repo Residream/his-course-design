@@ -3,6 +3,7 @@
  */
 #include "model/bed.h"
 #include "core/utils.h"
+#include <limits.h>
 
 /*
  * 床位基础功能
@@ -57,7 +58,7 @@ Bed *load_beds_from_file(void)
         }
         char *endptr = NULL;
         long bed_no_val = strtol(token, &endptr, 10);
-        if (token[0] == '\0' || *endptr != '\0' || bed_no_val <= 0)
+        if (token[0] == '\0' || *endptr != '\0' || bed_no_val <= 0 || bed_no_val > INT_MAX)
         {
             free(node);
             continue;
@@ -406,12 +407,14 @@ void add_bed()
                 break;
             }
 
-            add_count = atoi(count_str);
-            if (add_count <= 0)
+            char *endptr = NULL;
+            long cnt_val = strtol(count_str, &endptr, 10);
+            if (*endptr != '\0' || cnt_val <= 0 || cnt_val > INT_MAX)
             {
                 printf("输入错误！添加数量必须是正整数，请重新输入。\n");
                 continue;
             }
+            add_count = (int)cnt_val;
             break;
         }
 
@@ -452,11 +455,43 @@ void add_bed()
 
         if (success_count > 0)
         {
+            int old_capacity = ward->capacity; // 病房原容量，保存失败时恢复
             ward->capacity += success_count;
 
-            if (save_beds_to_file(b_head) != 0 || save_wards_to_file(w_head) != 0)
+            int s1 = save_beds_to_file(b_head);
+            int s2 = save_wards_to_file(w_head);
+            if (s1 != 0 || s2 != 0)
             {
-                printf("生成了 %d 张床位，但保存到文件时失败！\n", success_count);
+                ward->capacity = old_capacity;
+
+                int rollback_upper = max_bed_no + success_count; // 仅回滚本次批量新增区间的床位节点
+                Bed *cur = b_head, *prev = NULL;
+                while (cur)
+                {
+                    if (strcmp(cur->ward_id, ward_id) == 0 && cur->bed_no > max_bed_no && cur->bed_no <= rollback_upper)
+                    {
+                        Bed *tmp = cur;
+                        if (prev)
+                            prev->next = cur->next;
+                        else
+                            b_head = cur->next;
+                        cur = cur->next;
+                        free(tmp);
+                    }
+                    else
+                    {
+                        prev = cur;
+                        cur = cur->next;
+                    }
+                }
+
+                int rb1 = save_beds_to_file(b_head);
+                int rb2 = save_wards_to_file(w_head);
+                printf("添加床位失败：保存文件失败。");
+                if (rb1 == 0 && rb2 == 0)
+                    printf("已回滚。\n");
+                else
+                    printf("且回滚失败，请立即检查数据文件。\n");
             }
             else
             {
@@ -574,30 +609,64 @@ void delete_bed()
             }
 
             Bed *cur = b_head, *prev = NULL;
+            Bed *removed_node = NULL; // 延迟释放，保存失败可插回链表
+            Bed *removed_prev = NULL;
             while (cur)
             {
                 if (strcmp(cur->bed_id, bed_id) == 0)
                 {
+                    removed_node = cur;
+                    removed_prev = prev;
                     if (prev)
                         prev->next = cur->next;
                     else
                         b_head = cur->next;
-                    free(cur);
+                    removed_node->next = NULL;
                     break;
                 }
                 prev = cur;
                 cur = cur->next;
             }
 
+            if (!removed_node)
+            {
+                printf("操作失败：未找到目标床位。\n");
+                wait_enter();
+                continue;
+            }
+
+            int old_capacity = ward->capacity; // 删除前容量快照，保存失败时恢复
             if (ward->capacity > 0)
                 ward->capacity -= 1;
 
-            if (save_beds_to_file(b_head) != 0 || save_wards_to_file(w_head) != 0)
+            int s1 = save_beds_to_file(b_head);
+            int s2 = save_wards_to_file(w_head);
+            if (s1 != 0 || s2 != 0)
             {
-                printf("操作失败：删除成功，但保存到文件失败！\n");
+                /** 先恢复链表节点，再恢复容量 */
+                if (removed_prev)
+                {
+                    removed_node->next = removed_prev->next;
+                    removed_prev->next = removed_node;
+                }
+                else
+                {
+                    removed_node->next = b_head;
+                    b_head = removed_node;
+                }
+                ward->capacity = old_capacity;
+
+                int rb1 = save_beds_to_file(b_head);
+                int rb2 = save_wards_to_file(w_head);
+                printf("删除床位失败：保存文件失败。");
+                if (rb1 == 0 && rb2 == 0)
+                    printf("已回滚。\n");
+                else
+                    printf("且回滚失败，请立即检查数据文件。\n");
             }
             else
             {
+                free(removed_node);
                 printf("床位删除成功！病房 [%s] 容量已更新为 %d 张。\n", ward->name, ward->capacity);
             }
 

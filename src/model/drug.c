@@ -8,10 +8,45 @@
 #include "model/patient.h"
 #include "model/prescription.h"
 #include "ui/menu.h"
+#include <errno.h>
+#include <limits.h>
+#include <math.h>
 
 /*
  * 药品基础操作
  */
+
+/* 解析非负整数字符串，严格验证格式和范围 */
+static int parse_nonnegative_int_strict(const char *text, int *out)
+{
+    if (!text || !out || text[0] == '\0')
+        return 0;
+
+    errno = 0;
+    char *endptr = NULL;
+    long value = strtol(text, &endptr, 10);
+    if (errno == ERANGE || *endptr != '\0' || value < 0 || value > INT_MAX)
+        return 0;
+
+    *out = (int)value;
+    return 1;
+}
+
+/* 解析非负浮点数字符串，严格验证格式和范围 */
+static int parse_nonnegative_float_strict(const char *text, float *out)
+{
+    if (!text || !out || text[0] == '\0')
+        return 0;
+
+    errno = 0;
+    char *endptr = NULL;
+    float value = strtof(text, &endptr);
+    if (errno == ERANGE || *endptr != '\0' || value < 0.0f || !isfinite((double)value))
+        return 0;
+
+    *out = value;
+    return 1;
+}
 
 /* 从文件中加载药品数据 */
 Drug *load_drugs_from_file()
@@ -76,14 +111,11 @@ Drug *load_drugs_from_file()
             free(node);
             continue;
         }
-        char *endptr = NULL;
-        float price_val = strtof(token, &endptr);
-        if (token[0] == '\0' || *endptr != '\0' || price_val < 0.0f)
+        if (!parse_nonnegative_float_strict(token, &node->price))
         {
             free(node);
             continue;
         }
-        node->price = price_val;
 
         token = strtok(NULL, "|");
         if (!token)
@@ -91,14 +123,11 @@ Drug *load_drugs_from_file()
             free(node);
             continue;
         }
-        endptr = NULL;
-        long stock_val = strtol(token, &endptr, 10);
-        if (token[0] == '\0' || *endptr != '\0' || stock_val < 0)
+        if (!parse_nonnegative_int_strict(token, &node->stock))
         {
             free(node);
             continue;
         }
-        node->stock = (int)stock_val;
 
         token = strtok(NULL, "|");
         if (token)
@@ -363,14 +392,11 @@ PharmacyDrug *load_pharmacy_drugs_from_file()
             free(node);
             continue;
         }
-        char *endptr = NULL;
-        long quantity_val = strtol(token, &endptr, 10);
-        if (token[0] == '\0' || *endptr != '\0' || quantity_val < 0)
+        if (!parse_nonnegative_int_strict(token, &node->quantity))
         {
             free(node);
             continue;
         }
-        node->quantity = (int)quantity_val;
 
         node->next = NULL;
         if (!head)
@@ -708,7 +734,7 @@ void add_drug()
             free_drugs(head);
             return;
         }
-        if (sscanf(price_input, "%f", &new_drug->price) == 1 && new_drug->price >= 0)
+        if (parse_nonnegative_float_strict(price_input, &new_drug->price))
             break;
         printf("输入有误，请重新输入正确价格！\n");
     }
@@ -724,7 +750,7 @@ void add_drug()
             free_drugs(head);
             return;
         }
-        if (sscanf(stock_input, "%d", &new_drug->stock) == 1 && new_drug->stock >= 0)
+        if (parse_nonnegative_int_strict(stock_input, &new_drug->stock))
             break;
         printf("输入有误，请重新输入正确库存！\n");
     }
@@ -802,6 +828,7 @@ void delete_drug()
 
             PharmacyDrug *pd_head = load_pharmacy_drugs_from_file();
             PharmacyDrug *pd_prev = NULL, *pd_cur = pd_head;
+            PharmacyDrug *removed_pd_head = NULL, *removed_pd_tail = NULL; // 暂存被移除的药房库存节点，保存失败时可直接拼回原链表
             while (pd_cur)
             {
                 if (strcmp(pd_cur->drug_id, id) == 0)
@@ -812,7 +839,14 @@ void delete_drug()
                     else
                         pd_head = pd_cur->next;
                     pd_cur = pd_cur->next;
-                    free(tmp);
+                    tmp->next = NULL;
+                    if (!removed_pd_head)
+                        removed_pd_head = removed_pd_tail = tmp;
+                    else
+                    {
+                        removed_pd_tail->next = tmp;
+                        removed_pd_tail = tmp;
+                    }
                 }
                 else
                 {
@@ -820,19 +854,59 @@ void delete_drug()
                     pd_cur = pd_cur->next;
                 }
             }
-            if (save_pharmacy_drugs_to_file(pd_head) != 0)
-                printf("保存药房药品关联失败！\n");
-            free_pharmacy_drugs(pd_head);
-
+            Drug *deleted_drug = cur; // 主表被删节点先保留，直到双文件都保存成功才真正 free
             if (prev)
                 prev->next = cur->next;
             else
                 head = cur->next;
-            free(cur);
-            if (save_drugs_to_file(head) != 0)
-                printf("保存药品信息失败！\n");
-            else
+            deleted_drug->next = NULL;
+
+            /** 两份文件都成功才算提交，任一失败就走回滚 */
+            int s_pd = save_pharmacy_drugs_to_file(pd_head);
+            int s_d = save_drugs_to_file(head);
+            if (s_pd == 0 && s_d == 0)
+            {
+                while (removed_pd_head)
+                {
+                    PharmacyDrug *tmp = removed_pd_head;
+                    removed_pd_head = removed_pd_head->next;
+                    free(tmp);
+                }
+                free(deleted_drug);
                 printf("删除成功！\n");
+            }
+            else
+            {
+                /** 先恢复主药品链 */
+                if (prev)
+                {
+                    deleted_drug->next = prev->next;
+                    prev->next = deleted_drug;
+                }
+                else
+                {
+                    deleted_drug->next = head;
+                    head = deleted_drug;
+                }
+
+                /** 再恢复药房库存关联链 */
+                if (removed_pd_head)
+                {
+                    removed_pd_tail->next = pd_head;
+                    pd_head = removed_pd_head;
+                }
+
+                /** 回滚后的状态重新落盘，尽量保证文件与内存一致 */
+                int rb1 = save_pharmacy_drugs_to_file(pd_head);
+                int rb2 = save_drugs_to_file(head);
+                printf("删除失败：保存文件失败。");
+                if (rb1 == 0 && rb2 == 0)
+                    printf("已回滚。\n");
+                else
+                    printf("且回滚失败，请立即检查数据文件。\n");
+            }
+
+            free_pharmacy_drugs(pd_head);
             free_drugs(head);
             wait_enter();
             clear_screen();
@@ -887,7 +961,7 @@ void update_drug()
         printf("2. 商品名\n");
         printf("3. 别名\n");
         printf("4. 价格\n");
-        printf("5. 总库存 (同步覆盖各药房)\n");
+        printf("5. 总库存 (多药房时仅允许与合计一致)\n");
         printf("6. 适用科室\n");
         printf("0. 返回\n");
         printf("请输入您的选择: ");
@@ -951,13 +1025,17 @@ void update_drug()
             if (strcmp(buf, "q") != 0 && strcmp(buf, "Q") != 0)
             {
                 float p;
-                if (sscanf(buf, "%f", &p) == 1 && p >= 0)
+                if (parse_nonnegative_float_strict(buf, &p))
                 {
                     drug->price = p;
                     if (save_drugs_to_file(head) != 0)
                         printf("保存药品信息失败！\n");
                     else
                         printf("更新成功！\n");
+                }
+                else
+                {
+                    printf("输入有误，请输入非负数字价格！\n");
                 }
             }
             break;
@@ -967,20 +1045,77 @@ void update_drug()
             if (strcmp(buf, "q") != 0 && strcmp(buf, "Q") != 0)
             {
                 int s;
-                if (sscanf(buf, "%d", &s) == 1 && s >= 0)
+                if (!parse_nonnegative_int_strict(buf, &s))
                 {
-                    drug->stock = s;
-                    if (save_drugs_to_file(head) != 0)
-                        printf("保存药品信息失败！\n");
-                    PharmacyDrug *pd_head = load_pharmacy_drugs_from_file();
-                    for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
-                        if (strcmp(pd->drug_id, drug->id) == 0)
-                            pd->quantity = s;
-                    if (save_pharmacy_drugs_to_file(pd_head) != 0)
-                        printf("保存药房药品关联失败！\n");
-                    free_pharmacy_drugs(pd_head);
-                    printf("更新成功！药房中该药品的库存已同步覆盖。\n");
+                    printf("输入有误，请输入非负整数库存！\n");
+                    break;
                 }
+
+                PharmacyDrug *pd_head = load_pharmacy_drugs_from_file();
+                int pd_count = 0;               // 该药关联药房数量
+                long long pd_total = 0;         // 各药房库存合计
+                PharmacyDrug *single_pd = NULL; // 单药房场景可直接同步该节点库存
+
+                for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
+                {
+                    if (strcmp(pd->drug_id, drug->id) == 0)
+                    {
+                        pd_count++;
+                        pd_total += pd->quantity;
+                        if (!single_pd)
+                            single_pd = pd;
+                    }
+                }
+
+                if (pd_count > 1 && (long long)s != pd_total)
+                {
+                    printf("该药品分布在多个药房，不能直接覆盖为新总库存。\n");
+                    printf("请通过入库/发药调整；当前各药房合计库存为: %lld\n", pd_total);
+                    free_pharmacy_drugs(pd_head);
+                    break;
+                }
+
+                int old_stock = drug->stock; // 变更前快照，用于保存失败时恢复
+                int old_single_qty = 0;
+                if (pd_count == 1 && single_pd)
+                {
+                    old_single_qty = single_pd->quantity;
+                    single_pd->quantity = s;
+                }
+                drug->stock = s;
+
+                int s_drug = (save_drugs_to_file(head) == 0);
+                int s_pd = 1;
+                if (pd_count == 1)
+                    s_pd = (save_pharmacy_drugs_to_file(pd_head) == 0);
+
+                if (s_drug && s_pd)
+                {
+                    if (pd_count == 1)
+                        printf("更新成功！已同步单一药房库存。\n");
+                    else
+                        printf("更新成功！\n");
+                }
+                else
+                {
+                    drug->stock = old_stock;
+                    if (pd_count == 1 && single_pd)
+                        single_pd->quantity = old_single_qty;
+
+                    /** 恢复内存后，再把回滚结果写回文件 */
+                    int rb1 = (save_drugs_to_file(head) == 0);
+                    int rb2 = 1;
+                    if (pd_count == 1)
+                        rb2 = (save_pharmacy_drugs_to_file(pd_head) == 0);
+
+                    printf("更新失败：保存文件失败。");
+                    if (rb1 && rb2)
+                        printf("已回滚。\n");
+                    else
+                        printf("且回滚失败，请立即检查数据文件。\n");
+                }
+
+                free_pharmacy_drugs(pd_head);
             }
             break;
         case 6:
@@ -1256,6 +1391,7 @@ void delete_pharmacy()
 
             PharmacyDrug *pd_head = load_pharmacy_drugs_from_file();
             PharmacyDrug *pd_prev = NULL, *pd_cur = pd_head;
+            PharmacyDrug *removed_pd_head = NULL, *removed_pd_tail = NULL; // 暂存被删库存关联，失败时直接恢复
             while (pd_cur)
             {
                 if (strcmp(pd_cur->pharmacy_id, id) == 0)
@@ -1266,7 +1402,14 @@ void delete_pharmacy()
                     else
                         pd_head = pd_cur->next;
                     pd_cur = pd_cur->next;
-                    free(tmp);
+                    tmp->next = NULL;
+                    if (!removed_pd_head)
+                        removed_pd_head = removed_pd_tail = tmp;
+                    else
+                    {
+                        removed_pd_tail->next = tmp;
+                        removed_pd_tail = tmp;
+                    }
                 }
                 else
                 {
@@ -1274,19 +1417,59 @@ void delete_pharmacy()
                     pd_cur = pd_cur->next;
                 }
             }
-            if (save_pharmacy_drugs_to_file(pd_head) != 0)
-                printf("保存药房药品关联失败！\n");
-            free_pharmacy_drugs(pd_head);
-
+            Pharmacy *deleted_pharmacy = cur; // 主药房节点延迟释放，等待双文件提交成功
             if (prev)
                 prev->next = cur->next;
             else
                 head = cur->next;
-            free(cur);
-            if (save_pharmacies_to_file(head) != 0)
-                printf("保存药房信息失败！\n");
-            else
+            deleted_pharmacy->next = NULL;
+
+            /** 先保存关联表，再保存主药房表 */
+            int s_pd = save_pharmacy_drugs_to_file(pd_head);
+            int s_p = save_pharmacies_to_file(head);
+            if (s_pd == 0 && s_p == 0)
+            {
+                while (removed_pd_head)
+                {
+                    PharmacyDrug *tmp = removed_pd_head;
+                    removed_pd_head = removed_pd_head->next;
+                    free(tmp);
+                }
+                free(deleted_pharmacy);
                 printf("药房删除成功！\n");
+            }
+            else
+            {
+                /** 回滚药房链 */
+                if (prev)
+                {
+                    deleted_pharmacy->next = prev->next;
+                    prev->next = deleted_pharmacy;
+                }
+                else
+                {
+                    deleted_pharmacy->next = head;
+                    head = deleted_pharmacy;
+                }
+
+                /** 回滚库存关联链 */
+                if (removed_pd_head)
+                {
+                    removed_pd_tail->next = pd_head;
+                    pd_head = removed_pd_head;
+                }
+
+                /** 将回滚后的状态持久化 */
+                int rb1 = save_pharmacy_drugs_to_file(pd_head);
+                int rb2 = save_pharmacies_to_file(head);
+                printf("删除失败：保存文件失败。");
+                if (rb1 == 0 && rb2 == 0)
+                    printf("已回滚。\n");
+                else
+                    printf("且回滚失败，请立即检查数据文件。\n");
+            }
+
+            free_pharmacy_drugs(pd_head);
             free_pharmacies(head);
             wait_enter();
             clear_screen();
@@ -1458,20 +1641,21 @@ void stock_in_pharmacy()
 
     printf("请输入入库数量: ");
     safe_input(qty_str, sizeof(qty_str));
-    int add_qty = atoi(qty_str);
-    if (add_qty <= 0)
+    int add_qty = 0;
+    if (!parse_nonnegative_int_strict(qty_str, &add_qty) || add_qty <= 0)
     {
         printf("输入无效！\n");
         wait_enter();
         goto cleanup;
     }
 
-    int found = 0;
+    int found = 0; // 该药在目标药房是否已有库存记录
+    PharmacyDrug *target_pd = NULL;
     for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
     {
         if (strcmp(pd->drug_id, d_id) == 0 && strcmp(pd->pharmacy_id, p_id) == 0)
         {
-            pd->quantity += add_qty;
+            target_pd = pd;
             found = 1;
             break;
         }
@@ -1493,6 +1677,7 @@ void stock_in_pharmacy()
         new_pd->drug_id[sizeof(new_pd->drug_id) - 1] = '\0';
         new_pd->quantity = add_qty;
         new_pd->next = NULL;
+        target_pd = new_pd;
 
         if (!pd_head)
             pd_head = new_pd;
@@ -1505,15 +1690,56 @@ void stock_in_pharmacy()
         }
     }
 
+    int old_stock = target_d->stock; // 文件保存失败时用于恢复
+    int old_pd_qty = found ? target_pd->quantity : 0;
+    if (found)
+        target_pd->quantity += add_qty;
+
     // 同步增加药品总库存
     target_d->stock += add_qty;
 
     int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
     int d_save_rc = save_drugs_to_file(d_head);
-    if (pd_save_rc != 0)
-        printf("保存药房药品关联失败！\n");
-    if (d_save_rc != 0)
-        printf("保存药品信息失败！\n");
+
+    if (pd_save_rc != 0 || d_save_rc != 0)
+    {
+        target_d->stock = old_stock;
+        if (found)
+        {
+            target_pd->quantity = old_pd_qty;
+        }
+        else
+        {
+            /** 新建节点场景：回滚时需把刚插入节点从链表摘除 */
+            PharmacyDrug *cur = pd_head, *prev = NULL;
+            while (cur)
+            {
+                if (cur == target_pd)
+                {
+                    if (prev)
+                        prev->next = cur->next;
+                    else
+                        pd_head = cur->next;
+                    free(cur);
+                    break;
+                }
+                prev = cur;
+                cur = cur->next;
+            }
+        }
+
+        /** 回滚完成后再次落盘 */
+        int rb_pd = save_pharmacy_drugs_to_file(pd_head);
+        int rb_d = save_drugs_to_file(d_head);
+
+        printf("入库失败：保存文件失败。");
+        if (rb_pd == 0 && rb_d == 0)
+            printf("已回滚。\n");
+        else
+            printf("且回滚失败，请立即检查数据文件。\n");
+        wait_enter();
+        goto cleanup;
+    }
 
     printf("入库成功！药房 [%s] 新增药品 [%s] %d 件，最新总库存: %d\n", target_p->name, target_d->generic_name, add_qty,
            target_d->stock);
@@ -1694,9 +1920,9 @@ void dispense_prescription_drug()
     char qty_str[32];
     printf("请输入确认发药扣减数量: ");
     safe_input(qty_str, sizeof(qty_str));
-    int qty = atoi(qty_str);
+    int qty = 0;
 
-    if (qty <= 0)
+    if (!parse_nonnegative_int_strict(qty_str, &qty) || qty <= 0)
     {
         printf("发药数量无效！\n");
         wait_enter();
@@ -1717,17 +1943,31 @@ void dispense_prescription_drug()
     }
 
     // 扣减库存
+    int old_pd_qty = target_pd->quantity; // 扣减前快照，用于失败回滚
+    int old_stock = target_drug->stock;
     target_pd->quantity -= qty;
     target_drug->stock -= qty;
 
     int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
     int d_save_rc = save_drugs_to_file(d_head);
-    if (pd_save_rc != 0)
-        printf("保存药房药品关联失败！\n");
-    if (d_save_rc != 0)
-        printf("保存药品信息失败！\n");
-    else
+
+    if (pd_save_rc == 0 && d_save_rc == 0)
         printf("\n处方发药成功！已从指定药房扣减库存。\n");
+    else
+    {
+        target_pd->quantity = old_pd_qty;
+        target_drug->stock = old_stock;
+
+        /** 回滚后的库存重新保存 */
+        int rb_pd = save_pharmacy_drugs_to_file(pd_head);
+        int rb_d = save_drugs_to_file(d_head);
+
+        printf("发药失败：保存文件失败。");
+        if (rb_pd == 0 && rb_d == 0)
+            printf("已回滚。\n");
+        else
+            printf("且回滚失败，请立即检查数据文件。\n");
+    }
     wait_enter();
 
 cleanup:

@@ -689,6 +689,10 @@ void doctor_admit_patient_hospitalization(const char *v_id)
 
                         if (admit_patient(&h_head, w_head, b_head, v->visit_id, r->p_id, final_pref_ward_id))
                         {
+                            Hospitalization *new_h = find_hospitalization_by_v_id(h_head, v->visit_id);
+                            Bed *new_bed = new_h ? find_bed_by_b_id(b_head, new_h->bed_id) : NULL;
+                            Ward *new_ward = new_h ? find_ward_by_w_id(w_head, new_h->ward_id) : NULL;
+
                             int s1 = (save_hospitalizations_to_file(h_head) == 0);
                             int s2 = (save_beds_to_file(b_head) == 0);
                             int s3 = (save_wards_to_file(w_head) == 0);
@@ -696,7 +700,40 @@ void doctor_admit_patient_hospitalization(const char *v_id)
                             if (s1 && s2 && s3)
                                 printf("患者已成功办理住院！\n");
                             else
-                                printf("办理住院成功，但保存文件失败！\n");
+                            {
+                                if (new_h)
+                                {
+                                    Hospitalization *cur = h_head, *prev = NULL;
+                                    while (cur)
+                                    {
+                                        if (cur == new_h)
+                                        {
+                                            if (prev)
+                                                prev->next = cur->next;
+                                            else
+                                                h_head = cur->next;
+                                            free(cur);
+                                            break;
+                                        }
+                                        prev = cur;
+                                        cur = cur->next;
+                                    }
+                                }
+                                if (new_bed)
+                                    new_bed->status = BED_STATUS_FREE;
+                                if (new_ward && new_ward->occupied > 0)
+                                    new_ward->occupied -= 1;
+
+                                int rb1 = (save_hospitalizations_to_file(h_head) == 0);
+                                int rb2 = (save_beds_to_file(b_head) == 0);
+                                int rb3 = (save_wards_to_file(w_head) == 0);
+
+                                printf("办理住院失败：保存文件失败。");
+                                if (rb1 && rb2 && rb3)
+                                    printf("已回滚。\n");
+                                else
+                                    printf("且回滚失败，请立即检查数据文件。\n");
+                            }
                         }
                         else
                         {
@@ -819,6 +856,13 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                     }
                     else
                     {
+                        Bed *old_bed = find_bed_by_b_id(b_head, h->bed_id);
+                        Ward *old_ward = find_ward_by_w_id(w_head, h->ward_id);
+                        int old_bed_status = old_bed ? old_bed->status : -1;
+                        int old_ward_occupied = old_ward ? old_ward->occupied : -1;
+                        int old_h_status = h->status;
+                        time_t old_discharge_date = h->discharge_date;
+
                         if (discharge_patient(h_head, w_head, b_head, h->hosp_id))
                         {
                             int s1 = (save_hospitalizations_to_file(h_head) == 0);
@@ -828,7 +872,24 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                             if (s1 && s2 && s3)
                                 printf("患者已成功办理出院！\n");
                             else
-                                printf("办理出院成功，但保存文件失败！\n");
+                            {
+                                if (old_bed)
+                                    old_bed->status = old_bed_status;
+                                if (old_ward)
+                                    old_ward->occupied = old_ward_occupied;
+                                h->status = old_h_status;
+                                h->discharge_date = old_discharge_date;
+
+                                int rb1 = (save_hospitalizations_to_file(h_head) == 0);
+                                int rb2 = (save_beds_to_file(b_head) == 0);
+                                int rb3 = (save_wards_to_file(w_head) == 0);
+
+                                printf("办理出院失败：保存文件失败。");
+                                if (rb1 && rb2 && rb3)
+                                    printf("已回滚。\n");
+                                else
+                                    printf("且回滚失败，请立即检查数据文件。\n");
+                            }
                         }
                         else
                         {
@@ -1014,6 +1075,10 @@ void add_hospitalization_record()
 
             if (admit_patient(&h_head, w_head, b_head, visit->visit_id, reg->p_id, final_pref_ward_id))
             {
+                Hospitalization *new_h = find_hospitalization_by_v_id(h_head, visit->visit_id);
+                Bed *new_bed = new_h ? find_bed_by_b_id(b_head, new_h->bed_id) : NULL;
+                Ward *new_ward = new_h ? find_ward_by_w_id(w_head, new_h->ward_id) : NULL;
+
                 int s1 = (save_hospitalizations_to_file(h_head) == 0);
                 int s2 = (save_beds_to_file(b_head) == 0);
                 int s3 = (save_wards_to_file(w_head) == 0);
@@ -1021,7 +1086,40 @@ void add_hospitalization_record()
                 if (s1 && s2 && s3)
                     printf("添加住院记录成功！\n");
                 else
-                    printf("添加住院记录成功，但保存文件失败！\n");
+                {
+                    if (new_h)
+                    {
+                        Hospitalization *cur = h_head, *prev = NULL;
+                        while (cur)
+                        {
+                            if (cur == new_h)
+                            {
+                                if (prev)
+                                    prev->next = cur->next;
+                                else
+                                    h_head = cur->next;
+                                free(cur);
+                                break;
+                            }
+                            prev = cur;
+                            cur = cur->next;
+                        }
+                    }
+                    if (new_bed)
+                        new_bed->status = BED_STATUS_FREE;
+                    if (new_ward && new_ward->occupied > 0)
+                        new_ward->occupied -= 1;
+
+                    int rb1 = (save_hospitalizations_to_file(h_head) == 0);
+                    int rb2 = (save_beds_to_file(b_head) == 0);
+                    int rb3 = (save_wards_to_file(w_head) == 0);
+
+                    printf("添加住院记录失败：保存文件失败。");
+                    if (rb1 && rb2 && rb3)
+                        printf("已回滚。\n");
+                    else
+                        printf("且回滚失败，请立即检查数据文件。\n");
+                }
             }
             else
             {
@@ -1114,49 +1212,93 @@ void delete_hospitalization_record()
                 return;
             }
 
-            /* 先保存待回收的床位/病房ID 以及住院状态 */
+            /** 先保存待回收的床位/病房ID 以及住院状态 */
             char del_bed_id[MAX_ID_LEN] = {0};
             char del_ward_id[MAX_ID_LEN] = {0};
-            int record_status = current->status; /* 缓存状态，防止 free 后失效 */
+            int record_status = current->status;     // 缓存状态，防止 free 后失效
+            Hospitalization *deleted_node = current; // 延迟释放的住院节点，提交失败时可直接挂回链表
+            Bed *bed_to_restore = NULL;              // 需要回滚的关联床位资源
+            Ward *ward_to_restore = NULL;            // 需要回滚的关联病房资源
+            int old_bed_status = -1;
+            int old_ward_occupied = -1;
 
             strncpy(del_bed_id, current->bed_id, sizeof(del_bed_id) - 1);
             strncpy(del_ward_id, current->ward_id, sizeof(del_ward_id) - 1);
 
-            /* 从住院链表删除 */
+            /** 从住院链表删除 */
             if (prev)
                 prev->next = current->next;
             else
                 h_head = current->next;
-            free(current);
+            /** 先断链但不 free，等保存成功后再释放 */
+            deleted_node->next = NULL;
 
-            /* 仅当患者仍在住院中时，才回收床位和回退病房占用 */
+            /** 仅当患者仍在住院中时，才回收床位和回退病房占用 */
             if (record_status == 0)
             {
-                /* 回收床位 */
+                /** 回收床位 */
                 if (b_head)
                 {
-                    Bed *bed = find_bed_by_b_id(b_head, del_bed_id);
-                    if (bed)
-                        bed->status = 0;
+                    bed_to_restore = find_bed_by_b_id(b_head, del_bed_id);
+                    if (bed_to_restore)
+                    {
+                        old_bed_status = bed_to_restore->status;
+                        bed_to_restore->status = 0;
+                    }
                 }
 
-                /* 回退病房占用 */
+                /** 回退病房占用 */
                 if (w_head)
                 {
-                    Ward *ward = find_ward_by_w_id(w_head, del_ward_id);
-                    if (ward && ward->occupied > 0)
-                        ward->occupied--;
+                    ward_to_restore = find_ward_by_w_id(w_head, del_ward_id);
+                    if (ward_to_restore)
+                    {
+                        old_ward_occupied = ward_to_restore->occupied;
+                        if (ward_to_restore->occupied > 0)
+                            ward_to_restore->occupied--;
+                    }
                 }
             }
 
+            /** 三份文件都成功才算删除提交 */
             int s1 = (save_hospitalizations_to_file(h_head) == 0);
             int s2 = (b_head ? (save_beds_to_file(b_head) == 0) : 0);
             int s3 = (w_head ? (save_wards_to_file(w_head) == 0) : 0);
 
             if (s1 && s2 && s3)
+            {
+                free(deleted_node);
                 printf("删除成功！\n");
+            }
             else
-                printf("住院记录已删除，但保存文件失败！\n");
+            {
+                /** 回滚：恢复住院节点到原位置 */
+                if (prev)
+                {
+                    deleted_node->next = prev->next;
+                    prev->next = deleted_node;
+                }
+                else
+                {
+                    deleted_node->next = h_head;
+                    h_head = deleted_node;
+                }
+
+                if (bed_to_restore && old_bed_status >= 0)
+                    bed_to_restore->status = old_bed_status;
+                if (ward_to_restore && old_ward_occupied >= 0)
+                    ward_to_restore->occupied = old_ward_occupied;
+
+                /** 回滚后重新持久化 */
+                int rb1 = (save_hospitalizations_to_file(h_head) == 0);
+                int rb2 = (b_head ? (save_beds_to_file(b_head) == 0) : 0);
+                int rb3 = (w_head ? (save_wards_to_file(w_head) == 0) : 0);
+                printf("删除失败：保存文件失败。");
+                if (rb1 && rb2 && rb3)
+                    printf("已回滚。\n");
+                else
+                    printf("且回滚失败，请立即检查数据文件。\n");
+            }
 
             free_hospitalizations(h_head);
             free_registrations(r_head);
@@ -1229,7 +1371,7 @@ void update_hospitalization_record(void)
         Ward *w_head = load_wards_from_file();
         Bed *b_head = load_beds_from_file();
 
-        int done = 0; /* 0:继续菜单 1:退出函数 */
+        int done = 0; // 0:继续菜单 1:退出函数
 
         while (!done)
         {
@@ -1325,35 +1467,67 @@ void update_hospitalization_record(void)
                         continue;
                     }
 
-                    /* 释放原床位 */
+                    char old_ward_id[MAX_ID_LEN] = {0}; // 快照当前住院位置，失败时可完整恢复
+                    char old_bed_id[MAX_ID_LEN] = {0};
+                    strncpy(old_ward_id, current->ward_id, sizeof(old_ward_id) - 1);
+                    strncpy(old_bed_id, current->bed_id, sizeof(old_bed_id) - 1);
+
+                    /** 释放原床位 */
                     Bed *old_bed = find_bed_by_b_id(b_head, current->bed_id);
+                    int old_old_bed_status = old_bed ? old_bed->status : -1;
+                    int old_auto_bed_status = auto_bed->status;
                     if (old_bed)
                         old_bed->status = 0;
 
-                    /* 占用新床位 */
+                    /** 占用新床位 */
                     auto_bed->status = 1;
 
-                    /* 调整病房占用计数 */
+                    /** 调整病房占用计数 */
                     Ward *old_ward = find_ward_by_w_id(w_head, current->ward_id);
+                    int old_old_ward_occupied = old_ward ? old_ward->occupied : -1;
+                    int old_new_ward_occupied = new_ward->occupied;
                     if (old_ward && old_ward->occupied > 0)
                         old_ward->occupied -= 1;
                     new_ward->occupied += 1;
 
-                    /* 更新住院记录的病房和床位 */
+                    /** 更新住院记录的病房和床位 */
                     strncpy(current->ward_id, new_ward_id, sizeof(current->ward_id) - 1);
                     current->ward_id[sizeof(current->ward_id) - 1] = '\0';
 
                     strncpy(current->bed_id, auto_bed->bed_id, sizeof(current->bed_id) - 1);
                     current->bed_id[sizeof(current->bed_id) - 1] = '\0';
 
-                    if (save_hospitalizations_to_file(h_head) == 0 && save_wards_to_file(w_head) == 0 &&
-                        save_beds_to_file(b_head) == 0)
+                    /** 新住院位置落盘：住院表+病房表+床位表 */
+                    int s1 = (save_hospitalizations_to_file(h_head) == 0);
+                    int s2 = (save_wards_to_file(w_head) == 0);
+                    int s3 = (save_beds_to_file(b_head) == 0);
+                    if (s1 && s2 && s3)
                     {
                         printf("病房更新成功！原床位已释放，已自动分配新床位：%s\n", auto_bed->bed_id);
                     }
                     else
                     {
-                        printf("病房/床位已更新，但保存文件失败！\n");
+                        if (old_bed && old_old_bed_status >= 0)
+                            old_bed->status = old_old_bed_status;
+                        auto_bed->status = old_auto_bed_status;
+                        if (old_ward && old_old_ward_occupied >= 0)
+                            old_ward->occupied = old_old_ward_occupied;
+                        new_ward->occupied = old_new_ward_occupied;
+
+                        strncpy(current->ward_id, old_ward_id, sizeof(current->ward_id) - 1);
+                        current->ward_id[sizeof(current->ward_id) - 1] = '\0';
+                        strncpy(current->bed_id, old_bed_id, sizeof(current->bed_id) - 1);
+                        current->bed_id[sizeof(current->bed_id) - 1] = '\0';
+
+                        /** 回滚后的原状态重新落盘 */
+                        int rb1 = (save_hospitalizations_to_file(h_head) == 0);
+                        int rb2 = (save_wards_to_file(w_head) == 0);
+                        int rb3 = (save_beds_to_file(b_head) == 0);
+                        printf("病房更新失败：保存文件失败。");
+                        if (rb1 && rb2 && rb3)
+                            printf("已回滚。\n");
+                        else
+                            printf("且回滚失败，请立即检查数据文件。\n");
                     }
 
                     wait_enter();
@@ -1485,18 +1659,43 @@ void update_hospitalization_record(void)
                         continue;
                     }
 
-                    new_bed->status = 1;
+                    char old_bed_id[MAX_ID_LEN] = {0}; // 快照原床位，保存失败时恢复
+                    strncpy(old_bed_id, current->bed_id, sizeof(old_bed_id) - 1);
+
                     Bed *old_bed = find_bed_by_b_id(b_head, current->bed_id);
+                    int old_old_bed_status = old_bed ? old_bed->status : -1;
+                    int old_new_bed_status = new_bed->status;
+
+                    new_bed->status = 1;
                     if (old_bed && old_bed != new_bed)
                         old_bed->status = 0;
 
                     strncpy(current->bed_id, new_bed_id, sizeof(current->bed_id) - 1);
                     current->bed_id[sizeof(current->bed_id) - 1] = '\0';
 
-                    if (save_hospitalizations_to_file(h_head) == 0 && save_beds_to_file(b_head) == 0)
+                    /** 床位调整落盘：住院表+床位表 */
+                    int s1 = (save_hospitalizations_to_file(h_head) == 0);
+                    int s2 = (save_beds_to_file(b_head) == 0);
+                    if (s1 && s2)
                         printf("床位更新成功！\n");
                     else
-                        printf("床位更新成功，但保存文件失败！\n");
+                    {
+                        new_bed->status = old_new_bed_status;
+                        if (old_bed && old_bed != new_bed && old_old_bed_status >= 0)
+                            old_bed->status = old_old_bed_status;
+
+                        strncpy(current->bed_id, old_bed_id, sizeof(current->bed_id) - 1);
+                        current->bed_id[sizeof(current->bed_id) - 1] = '\0';
+
+                        /** 回滚后重写文件，尽量回到一致状态 */
+                        int rb1 = (save_hospitalizations_to_file(h_head) == 0);
+                        int rb2 = (save_beds_to_file(b_head) == 0);
+                        printf("床位更新失败：保存文件失败。");
+                        if (rb1 && rb2)
+                            printf("已回滚。\n");
+                        else
+                            printf("且回滚失败，请立即检查数据文件。\n");
+                    }
 
                     wait_enter();
                     clear_screen();

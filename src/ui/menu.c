@@ -144,11 +144,13 @@ void login_menu()
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             patient_pre_menu();
             break;
         }
-        case 2: {
+        case 2:
+        {
             char id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(id, sizeof(id));
@@ -181,7 +183,8 @@ void login_menu()
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             char name[MAX_NAME_LEN];
             printf("请输入管理员用户名(输入0返回): ");
             safe_input(name, sizeof(name));
@@ -259,11 +262,13 @@ void patient_pre_menu()
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             patient_register();
             break;
         }
-        case 2: {
+        case 2:
+        {
             char id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(id, sizeof(id));
@@ -698,7 +703,8 @@ void manager_drug_menu()
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             // 药品管理子菜单
             while (1)
             {
@@ -756,7 +762,8 @@ void manager_drug_menu()
         drug_menu_end:
             break;
         }
-        case 2: {
+        case 2:
+        {
             // 药房管理子菜单
             while (1)
             {
@@ -810,7 +817,8 @@ void manager_drug_menu()
         pharmacy_menu_end:
             break;
         }
-        case 3: {
+        case 3:
+        {
             // 药房药品管理子菜单
             while (1)
             {
@@ -1678,7 +1686,8 @@ void doctor_visit_menu()
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char reg_id[MAX_ID_LEN];
             char v_id[MAX_ID_LEN];
             printf("请输入挂号ID开始看诊(输入0返回): ");
@@ -1696,14 +1705,24 @@ void doctor_visit_menu()
             }
             snprintf(v_id, sizeof(v_id), "V%04d", generate_next_visit_id(v_head));
             printf("生成看诊ID: %s\n", v_id);
+            int old_status = reg->status; // 挂号原状态快照，用于失败回滚
             reg->status = REG_STATUS_DONE;
             if (save_registrations_to_file(r_head) != 0)
-                printf("保存挂号信息失败！\n");
-            else
-                printf("挂号状态已更新\n");
+            {
+                reg->status = old_status;
+                printf("开始看诊失败：保存挂号信息失败！\n");
+                wait_enter();
+                goto cleanup;
+            }
+
+            printf("挂号状态已更新\n");
+
             Visit *new_node = (Visit *)malloc(sizeof(Visit));
             if (!new_node)
             {
+                reg->status = old_status;
+                if (save_registrations_to_file(r_head) != 0)
+                    printf("内存分配失败，且挂号状态回滚失败，请检查数据文件！\n");
                 printf("内存分配失败！\n");
                 wait_enter();
                 goto cleanup;
@@ -1712,15 +1731,45 @@ void doctor_visit_menu()
             new_node->next = NULL;
             append_visit(&v_head, new_node);
             if (save_visits_to_file(v_head) != 0)
-                printf("保存看诊信息失败！\n");
-            else
-                printf("看诊信息已保存\n");
+            {
+                /** 保存看诊失败时，撤销本次新增的看诊节点 */
+                Visit *cur = v_head, *prev = NULL;
+                while (cur)
+                {
+                    if (cur == new_node)
+                    {
+                        if (prev)
+                            prev->next = cur->next;
+                        else
+                            v_head = cur->next;
+                        free(cur);
+                        break;
+                    }
+                    prev = cur;
+                    cur = cur->next;
+                }
+
+                reg->status = old_status;
+                /** 回滚后将挂号与看诊两份数据重新落盘 */
+                int rb_reg = save_registrations_to_file(r_head);
+                int rb_visit = save_visits_to_file(v_head);
+                printf("开始看诊失败：保存看诊信息失败。");
+                if (rb_reg == 0 && rb_visit == 0)
+                    printf("已回滚。\n");
+                else
+                    printf("且回滚失败，请立即检查数据文件。\n");
+                wait_enter();
+                goto cleanup;
+            }
+
+            printf("看诊信息已保存\n");
 
             wait_enter();
             doctor_visit_patient(v_head, v_id, &e_head, r_head, p_head, d_head);
             goto cleanup;
         }
-        case 2: {
+        case 2:
+        {
             char v_id[MAX_ID_LEN];
             printf("请输入看诊ID继续看诊(输入0返回): ");
             safe_input(v_id, sizeof(v_id));
