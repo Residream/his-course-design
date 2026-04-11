@@ -9,7 +9,7 @@
  * 床位基础功能
  */
 
-/* 从文件中加载床位数据 */
+/* 从文件中加载床位数据，文件格式: bed_id|ward_id|bed_no|status(0空闲/1占用) */
 Bed *load_beds_from_file(void)
 {
     FILE *fp = fopen(BEDS_FILE, "r");
@@ -341,7 +341,12 @@ void append_bed(Bed **head, Bed *new_bed)
  * 床位业务函数
  */
 
-/* 添加床位 */
+/*
+ * 添加床位(管理员功能)
+ * 支持批量添加: 输入数量后自动编号(从当前最大床位号+1起)
+ * 涉及两张表联动: beds + wards(更新容量)
+ * 批量添加中途失败时, 回滚已添加的床位节点并恢复病房容量
+ */
 void add_bed()
 {
     Ward *w_head = load_wards_from_file();
@@ -507,7 +512,12 @@ void add_bed()
     clear_screen();
 }
 
-/* 删除床位 */
+/*
+ * 删除床位(管理员功能)
+ * 安全检查: 拒绝删除已占用的床位
+ * 涉及两张表联动: beds + wards(减少容量)
+ * 保存失败时回滚
+ */
 void delete_bed()
 {
     Ward *w_head = load_wards_from_file();
@@ -643,7 +653,7 @@ void delete_bed()
             int s2 = save_wards_to_file(w_head);
             if (s1 != 0 || s2 != 0)
             {
-                /** 先恢复链表节点，再恢复容量 */
+                /* 先恢复链表节点，再恢复容量 */
                 if (removed_prev)
                 {
                     removed_node->next = removed_prev->next;

@@ -9,7 +9,7 @@
  * 科室基础操作
  */
 
-/* 从文件中加载科室数据 */
+/* 从文件中加载科室数据，文件格式: name(每行一个科室名) */
 Department *load_departments_from_file(void)
 {
     FILE *fp = fopen(DEPARTMENTS_FILE, "r");
@@ -189,7 +189,11 @@ void add_department()
     }
 }
 
-/* 删除科室 */
+/*
+ * 删除科室(管理员功能)
+ * 安全检查: 拒绝删除仍有医生挂靠的科室
+ * 需先将科室下所有医生转到其他科室才允许删除
+ */
 void delete_department()
 {
     char name[MAX_NAME_LEN];
@@ -237,7 +241,7 @@ void delete_department()
             }
             else // 用户输入y/Y确认删除
             {
-                // 检查是否有医生属于该科室
+                /* 检查是否有医生属于该科室 */
                 Doctor *doc_head = load_doctors_from_file();
                 int has_doctor = 0;
                 for (Doctor *doc = doc_head; doc; doc = doc->next)

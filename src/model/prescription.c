@@ -14,7 +14,7 @@
  * 处方基础操作
  */
 
-/* 从文件中加载处方数据 */
+/* 从文件中加载处方数据，文件格式: pr_id|visit_id|p_id|d_id|drug_id|dose|frequency */
 Prescription *load_prescriptions_from_file(void)
 {
     FILE *fp = fopen(PRESCRIPTIONS_FILE, "r");
@@ -392,10 +392,10 @@ void append_prescription(Prescription **head, Prescription *new_pr)
 }
 
 /*
- * 处方系统功能
+ * 处方系统功能(增删改查)
  */
 
-/* 添加处方记录 */
+/* 添加处方记录(需指定看诊ID, 自动关联患者和医生) */
 void add_prescription_record()
 {
     Prescription *pr_head = load_prescriptions_from_file();
@@ -413,14 +413,14 @@ void add_prescription_record()
     char dose[MAX_DOSE_LEN];
     char frequency[MAX_FREQ_LEN];
 
-    // 自动分配新处方ID
+    /* 自动分配新处方ID */
     int id_num = generate_next_prescription_id(pr_head);
     snprintf(pr_id, sizeof(pr_id), "PR%04d", id_num);
 
     Visit *visit = NULL;
     Registration *reg = NULL;
 
-    // 1. 获取并验证看诊ID
+    /* 1. 获取并验证看诊ID */
     while (1)
     {
         printf("请输入看诊ID(输入0返回): ");
@@ -450,7 +450,7 @@ void add_prescription_record()
         break;
     }
 
-    // 2. 获取并验证患者ID
+    /* 2. 获取并验证患者ID */
     while (1)
     {
         printf("请输入患者ID(输入0返回): ");
@@ -474,7 +474,7 @@ void add_prescription_record()
         break;
     }
 
-    // 3. 获取并验证医生ID
+    /* 3. 获取并验证医生ID */
     while (1)
     {
         printf("请输入医生ID(输入0返回): ");
@@ -498,7 +498,7 @@ void add_prescription_record()
         break;
     }
 
-    // 4. 获取并验证药品ID
+    /* 4. 获取并验证药品ID */
     while (1)
     {
         printf("请输入药品ID(输入0返回): ");
@@ -517,7 +517,7 @@ void add_prescription_record()
         break;
     }
 
-    // 5. 剂量
+    /* 5. 剂量 */
     while (1)
     {
         printf("请输入剂量(如 1粒, 10ml, 输入0返回): ");
@@ -528,7 +528,7 @@ void add_prescription_record()
             break;
     }
 
-    // 6. 频次
+    /* 6. 频次 */
     while (1)
     {
         printf("请输入频次(如 1日3次, 输入0返回): ");
@@ -539,7 +539,7 @@ void add_prescription_record()
             break;
     }
 
-    // 构建并插入新处方
+    /* 构建并插入新处方 */
     Prescription *new_node = (Prescription *)malloc(sizeof(Prescription));
     if (!new_node)
     {
@@ -829,7 +829,7 @@ void query_prescription_record()
                 match = 1;
             else if (select == 4 && strcmp(cur->d_id, query) == 0)
                 match = 1;
-            else if (select == 5) /* 按药品名称模糊匹配（通用名/商品名/别名） */
+            else if (select == 5) // 按药品名称模糊匹配（通用名/商品名/别名）
             {
                 Drug *drug = find_drug_by_id(drug_head, cur->drug_id);
                 if (drug && (strstr(drug->generic_name, query) != NULL || strstr(drug->trade_name, query) != NULL ||

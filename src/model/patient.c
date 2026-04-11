@@ -18,7 +18,7 @@
  * 患者基础操作
  */
 
-/* 从文件中加载患者数据 */
+/* 从文件中加载患者数据，文件格式: id|name|gender|age|pwd_hash|salt */
 Patient *load_patients_from_file(void)
 {
     FILE *fp = fopen(PATIENTS_FILE, "r");
@@ -522,7 +522,11 @@ void add_patient()
     clear_screen();
 }
 
-/* 删除患者 */
+/*
+ * 删除患者(管理员功能)
+ * 安全检查: 拒绝删除仍有未完成挂号或住院中的患者
+ * 需先处理完所有关联的活跃记录才允许删除
+ */
 void delete_patient()
 {
     char id[MAX_ID_LEN];
@@ -570,7 +574,7 @@ void delete_patient()
             }
             else // 用户输入y/Y确认删除
             {
-                // 检查是否有关联的未完成挂号记录
+                /* 检查是否有关联的未完成挂号记录 */
                 Registration *reg_head = load_registrations_from_file();
                 int has_active = 0;
                 for (Registration *r = reg_head; r; r = r->next)
@@ -585,7 +589,7 @@ void delete_patient()
 
                 if (!has_active)
                 {
-                    // 检查是否有进行中的住院记录
+                    /* 检查是否有进行中的住院记录 */
                     Hospitalization *h_head = load_hospitalizations_from_file();
                     for (Hospitalization *h = h_head; h; h = h->next)
                     {
@@ -699,8 +703,7 @@ void update_patient()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -734,8 +737,7 @@ void update_patient()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -765,8 +767,7 @@ void update_patient()
             break;
         }
         /* 更新年龄 */
-        case 3:
-        {
+        case 3: {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -831,8 +832,7 @@ void update_patient()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -885,7 +885,12 @@ void update_patient()
     }
 }
 
-/* 查询患者信息（支持ID精确查询和姓名模糊查询） */
+/*
+ * 查询患者信息
+ * 支持两种查询模式:
+ *   1. 按患者ID精确匹配
+ *   2. 按姓名子串模糊匹配(strstr)
+ */
 void query_patient()
 {
     Patient *patient_head = load_patients_from_file();
@@ -932,9 +937,9 @@ void query_patient()
         for (Patient *cur = patient_head; cur; cur = cur->next)
         {
             int match = 0;
-            if (select == 1 && strcmp(cur->id, query) == 0) /* 精确匹配ID */
+            if (select == 1 && strcmp(cur->id, query) == 0) // 精确匹配ID
                 match = 1;
-            else if (select == 2 && strstr(cur->name, query) != NULL) /* 姓名子串匹配 */
+            else if (select == 2 && strstr(cur->name, query) != NULL) // 姓名子串匹配
                 match = 1;
 
             if (match)
@@ -1073,7 +1078,11 @@ void patient_view_my_info()
     clear_screen();
 }
 
-/* 患者修改个人信息 */
+/*
+ * 患者修改个人信息
+ * 修改密码时需先验证旧密码, 通过后才允许设置新密码
+ * 每次修改立即持久化到文件
+ */
 void patient_update_my_info()
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
@@ -1139,8 +1148,7 @@ void patient_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1174,8 +1182,7 @@ void patient_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1205,8 +1212,7 @@ void patient_update_my_info()
             break;
         }
         /* 更新年龄 */
-        case 3:
-        {
+        case 3: {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -1271,8 +1277,7 @@ void patient_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];
@@ -1361,7 +1366,7 @@ void patient_registration()
 
     char department[MAX_INPUT_LEN];
     char doctor_id[MAX_ID_LEN];
-    // 输入科室名称并显示该科室医生列表
+    /* 输入科室名称并显示该科室医生列表 */
     while (1)
     {
         print_department_hint();
@@ -1428,7 +1433,7 @@ void patient_registration()
 
         print_doctor_line(id_w, name_w, gen_w, dept_w);
 
-        // 输入医生ID并校验属于该科室
+        /* 输入医生ID并校验属于该科室 */
         while (1)
         {
             printf("请输入要挂号预约的医生ID(输入0返回): ");
@@ -1847,7 +1852,7 @@ void patient_view_my_hospitalization_records()
 /* 患者查看我的处方记录 */
 void patient_view_my_prescription_records()
 {
-    // 1. 权限与登录态校验
+    /* 1. 权限与登录态校验 */
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
         printf("系统错误：请先以患者身份登录！\n");
@@ -1855,7 +1860,7 @@ void patient_view_my_prescription_records()
         return;
     }
 
-    // 2. 加载所需的所有基础数据
+    /* 2. 加载所需的所有基础数据 */
     Prescription *pr_head = load_prescriptions_from_file();
     if (!pr_head)
     {
@@ -1869,7 +1874,7 @@ void patient_view_my_prescription_records()
     Doctor *d_head = load_doctors_from_file();
     Drug *drug_head = load_drugs_from_file();
 
-    // 3. 统计属于当前患者的处方数量
+    /* 3. 统计属于当前患者的处方数量 */
     int total_matches = 0;
     for (Prescription *cur = pr_head; cur; cur = cur->next)
     {
@@ -1879,7 +1884,7 @@ void patient_view_my_prescription_records()
         }
     }
 
-    // 如果没有找到该患者的处方
+    /* 如果没有找到该患者的处方 */
     if (total_matches == 0)
     {
         printf("您当前没有任何处方记录！\n");
@@ -1892,7 +1897,7 @@ void patient_view_my_prescription_records()
         return;
     }
 
-    // 4. 将匹配的处方节点指针存入数组，方便后续分页提取
+    /* 4. 将匹配的处方节点指针存入数组，方便后续分页提取 */
     Prescription **matches = (Prescription **)malloc(total_matches * sizeof(Prescription *));
     int idx = 0;
     for (Prescription *cur = pr_head; cur; cur = cur->next)
@@ -1903,12 +1908,12 @@ void patient_view_my_prescription_records()
         }
     }
 
-    // 5. 分页显示逻辑
+    /* 5. 分页显示逻辑 */
     int page_size = PAGE_SIZE;
     int total_pages = (total_matches + page_size - 1) / page_size;
     int current_page = 1;
 
-    // 计算表格列宽（基于所有数据计算列宽，保证排版整齐统一）
+    /* 计算表格列宽（基于所有数据计算列宽，保证排版整齐统一） */
     int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
     calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
 
@@ -1917,25 +1922,25 @@ void patient_view_my_prescription_records()
         clear_screen();
         printf("===== 我的处方记录 (共 %d 条, 第 %d/%d 页) =====\n", total_matches, current_page, total_pages);
 
-        // 打印表头
+        /* 打印表头 */
         print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
 
-        // 计算当前页的起始和结束索引
+        /* 计算当前页的起始和结束索引 */
         int start = (current_page - 1) * page_size;
         int end = start + page_size;
         if (end > total_matches)
             end = total_matches;
 
-        // 打印当前页的数据
+        /* 打印当前页的数据 */
         for (int i = start; i < end; i++)
         {
             print_prescription(matches[i], p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
         }
 
-        // 打印表尾闭合线
+        /* 打印表尾闭合线 */
         print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
 
-        // 交互控制
+        /* 交互控制 */
         printf("\n[n]下一页  [p]上一页  [q]退出\n> ");
         char buf[MAX_INPUT_LEN];
         safe_input(buf, sizeof(buf));
@@ -1961,7 +1966,7 @@ void patient_view_my_prescription_records()
         }
     }
 
-    // 6. 清理内存
+    /* 6. 清理内存 */
     free(matches);
     free_prescriptions(pr_head);
     free_patients(p_head);

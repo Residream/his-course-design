@@ -654,13 +654,13 @@ void analytics_ward_utilization(void)
 typedef struct DeptWorkloadStats
 {
     char name[MAX_NAME_LEN];
-    int total;      /* 总挂号量 */
-    int done;       /* 已完成(已就诊) */
-    int canceled;   /* 已取消 */
-    int recent_30d; /* 近30天挂号量 */
-    int prev_30d;   /* 前30天挂号量 */
+    int total;      // 总挂号量
+    int done;       // 已完成(已就诊)
+    int canceled;   // 已取消
+    int recent_30d; // 近30天挂号量
+    int prev_30d;   // 前30天挂号量
     float cancel_rate;
-    float trend_pct; /* 趋势百分比 */
+    float trend_pct; // 趋势百分比
 } DeptWorkloadStats;
 
 /* 医生接诊量统计结构体 */
@@ -2018,7 +2018,8 @@ void analytics_drug_usage(void)
  */
 
 /* 住院天数分桶的标签与区间边界(闭区间) */
-static const char *STAY_BUCKET_LABELS[ANALYTICS_STAY_BUCKET_COUNT] = {"1-3 天", "4-7 天", "8-14 天", "15-30 天", ">30 天"};
+static const char *STAY_BUCKET_LABELS[ANALYTICS_STAY_BUCKET_COUNT] = {"1-3 天", "4-7 天", "8-14 天", "15-30 天",
+                                                                      ">30 天"};
 static const int STAY_BUCKET_MIN[ANALYTICS_STAY_BUCKET_COUNT] = {1, 4, 8, 15, 31};
 static const int STAY_BUCKET_MAX[ANALYTICS_STAY_BUCKET_COUNT] = {3, 7, 14, 30, 9999};
 
@@ -2039,7 +2040,7 @@ typedef struct InpatientAlertStats
     char ward_name[MAX_NAME_LEN];
     int stayed_days;
     float ward_avg;
-    int is_overdue; /* 1=超期, 0=正常 */
+    int is_overdue; // 1=超期, 0=正常
 } InpatientAlertStats;
 
 /* 计算住院天数分布表格列宽 */

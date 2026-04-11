@@ -14,7 +14,7 @@
  * 医生基础操作
  */
 
-/* 从文件中加载医生数据 */
+/* 从文件中加载医生数据，文件格式: id|name|gender|department|pwd_hash|salt */
 Doctor *load_doctors_from_file(void)
 {
     FILE *fp = fopen(DOCTORS_FILE, "r");
@@ -476,7 +476,11 @@ void add_doctor()
     clear_screen();
 }
 
-/* 删除医生 */
+/*
+ * 删除医生(管理员功能)
+ * 安全检查: 拒绝删除仍有未完成挂号的医生
+ * 需先处理完所有关联的活跃挂号记录才允许删除
+ */
 void delete_doctor()
 {
     char id[MAX_ID_LEN];
@@ -524,7 +528,7 @@ void delete_doctor()
                 return;
             }
 
-            // 检查是否有关联的未完成挂号记录
+            /* 检查是否有关联的未完成挂号记录 */
             Registration *reg_head = load_registrations_from_file();
             int has_reg = 0;
             for (Registration *r = reg_head; r; r = r->next)
@@ -641,8 +645,7 @@ void update_doctor()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -677,8 +680,7 @@ void update_doctor()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -708,8 +710,7 @@ void update_doctor()
             break;
         }
         /* 更新科室 */
-        case 3:
-        {
+        case 3: {
             char department[MAX_INPUT_LEN];
             while (1)
             {
@@ -740,8 +741,7 @@ void update_doctor()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -794,7 +794,13 @@ void update_doctor()
     }
 }
 
-/* 查询医生信息（支持ID精确查询、姓名和科室模糊查询） */
+/*
+ * 查询医生信息
+ * 支持三种查询模式:
+ *   1. 按医生ID精确匹配
+ *   2. 按姓名子串模糊匹配(strstr)
+ *   3. 按科室子串模糊匹配(strstr)
+ */
 void query_doctor()
 {
     Doctor *doctor_head = load_doctors_from_file();
@@ -1052,8 +1058,7 @@ void doctor_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1:
-        {
+        case 1: {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1088,8 +1093,7 @@ void doctor_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2:
-        {
+        case 2: {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1119,8 +1123,7 @@ void doctor_update_my_info()
             break;
         }
         /* 更新科室 */
-        case 3:
-        {
+        case 3: {
             char department[MAX_INPUT_LEN];
             while (1)
             {
@@ -1151,8 +1154,7 @@ void doctor_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4:
-        {
+        case 4: {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];

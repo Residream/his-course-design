@@ -144,13 +144,11 @@ void login_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             patient_pre_menu();
             break;
         }
-        case 2:
-        {
+        case 2: {
             char id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(id, sizeof(id));
@@ -183,8 +181,7 @@ void login_menu()
             }
             break;
         }
-        case 3:
-        {
+        case 3: {
             char name[MAX_NAME_LEN];
             printf("请输入管理员用户名(输入0返回): ");
             safe_input(name, sizeof(name));
@@ -262,13 +259,11 @@ void patient_pre_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             patient_register();
             break;
         }
-        case 2:
-        {
+        case 2: {
             char id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(id, sizeof(id));
@@ -703,9 +698,8 @@ void manager_drug_menu()
 
         switch (select)
         {
-        case 1:
-        {
-            // 药品管理子菜单
+        case 1: {
+            /* 药品管理子菜单 */
             while (1)
             {
                 clear_screen();
@@ -762,9 +756,8 @@ void manager_drug_menu()
         drug_menu_end:
             break;
         }
-        case 2:
-        {
-            // 药房管理子菜单
+        case 2: {
+            /* 药房管理子菜单 */
             while (1)
             {
                 clear_screen();
@@ -817,9 +810,8 @@ void manager_drug_menu()
         pharmacy_menu_end:
             break;
         }
-        case 3:
-        {
-            // 药房药品管理子菜单
+        case 3: {
+            /* 药房药品管理子菜单 */
             while (1)
             {
                 clear_screen();
@@ -1598,7 +1590,12 @@ void doctor_view_patients_menu()
     }
 }
 
-/* 医生看诊管理 */
+/*
+ * 医生看诊管理
+ * 每轮循环重新加载所有数据, 确保看到最新状态
+ * 开始看诊时涉及两张表联动: registrations(状态->已就诊) + visits(新增记录)
+ * 保存失败时回滚两张表, 使用 goto cleanup 统一释放内存
+ */
 void doctor_visit_menu()
 {
     if (!g_session.logged_in || strcmp(g_session.role, "doctor") != 0)
@@ -1618,7 +1615,7 @@ void doctor_visit_menu()
         Doctor *d_head = load_doctors_from_file();
         Exam *e_head = load_exams_from_file();
 
-        int should_return = 0; /* 标记是否退出整个函数 */
+        int should_return = 0; // 标记是否退出整个函数
 
         if (!r_head)
         {
@@ -1686,8 +1683,7 @@ void doctor_visit_menu()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             char reg_id[MAX_ID_LEN];
             char v_id[MAX_ID_LEN];
             printf("请输入挂号ID开始看诊(输入0返回): ");
@@ -1705,10 +1701,13 @@ void doctor_visit_menu()
             }
             snprintf(v_id, sizeof(v_id), "V%04d", generate_next_visit_id(v_head));
             printf("生成看诊ID: %s\n", v_id);
-            int old_status = reg->status; // 挂号原状态快照，用于失败回滚
+
+            /* 第一步: 快照挂号原状态, 修改挂号状态为已就诊并保存 */
+            int old_status = reg->status;
             reg->status = REG_STATUS_DONE;
             if (save_registrations_to_file(r_head) != 0)
             {
+                /* 保存挂号失败: 直接恢复内存状态即可(文件未被修改) */
                 reg->status = old_status;
                 printf("开始看诊失败：保存挂号信息失败！\n");
                 wait_enter();
@@ -1717,9 +1716,11 @@ void doctor_visit_menu()
 
             printf("挂号状态已更新\n");
 
+            /* 第二步: 创建看诊记录并保存 */
             Visit *new_node = (Visit *)malloc(sizeof(Visit));
             if (!new_node)
             {
+                /* 内存分配失败: 挂号文件已写入新状态, 需回滚文件 */
                 reg->status = old_status;
                 if (save_registrations_to_file(r_head) != 0)
                     printf("内存分配失败，且挂号状态回滚失败，请检查数据文件！\n");
@@ -1732,7 +1733,7 @@ void doctor_visit_menu()
             append_visit(&v_head, new_node);
             if (save_visits_to_file(v_head) != 0)
             {
-                /** 保存看诊失败时，撤销本次新增的看诊节点 */
+                /* 第三步(失败回滚): 从链表中摘除刚插入的看诊节点 */
                 Visit *cur = v_head, *prev = NULL;
                 while (cur)
                 {
@@ -1749,8 +1750,8 @@ void doctor_visit_menu()
                     cur = cur->next;
                 }
 
+                /* 恢复挂号状态并将两张表重新落盘 */
                 reg->status = old_status;
-                /** 回滚后将挂号与看诊两份数据重新落盘 */
                 int rb_reg = save_registrations_to_file(r_head);
                 int rb_visit = save_visits_to_file(v_head);
                 printf("开始看诊失败：保存看诊信息失败。");
@@ -1768,8 +1769,7 @@ void doctor_visit_menu()
             doctor_visit_patient(v_head, v_id, &e_head, r_head, p_head, d_head);
             goto cleanup;
         }
-        case 2:
-        {
+        case 2: {
             char v_id[MAX_ID_LEN];
             printf("请输入看诊ID继续看诊(输入0返回): ");
             safe_input(v_id, sizeof(v_id));

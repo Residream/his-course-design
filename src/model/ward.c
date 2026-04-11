@@ -9,7 +9,7 @@
  *病房基础功能
  */
 
-/* 从文件中加载病房数据 */
+/* 从文件中加载病房数据，文件格式: ward_id|name|type|department|capacity|occupied */
 Ward *load_wards_from_file(void)
 {
     FILE *fp = fopen(WARDS_FILE, "r");
@@ -470,7 +470,11 @@ void add_ward()
     clear_screen();
 }
 
-/* 删除病房 */
+/*
+ * 删除病房(管理员功能)
+ * 安全检查: 拒绝删除仍有床位的病房
+ * 需先删除病房下所有床位才允许删除
+ */
 void delete_ward()
 {
     char ward_id[MAX_ID_LEN];

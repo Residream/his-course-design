@@ -15,7 +15,7 @@
  * 看诊基础功能
  */
 
-/* 从文件中加载看诊数据 */
+/* 从文件中加载看诊数据，文件格式: visit_id|reg_id|when(时间戳)|status|diagnosis */
 Visit *load_visits_from_file(void)
 {
     FILE *fp = fopen(VISITS_FILE, "r");
@@ -185,7 +185,7 @@ Visit *find_visit_by_v_id(Visit *v_head, const char *v_id)
     return NULL;
 }
 
-/* 根据患者ID查找看诊 */
+/* 根据患者ID查找看诊(需经挂号表关联: visit->reg->p_id) */
 Visit *find_visit_by_p_id(Visit *v_head, Registration *reg_head, const char *p_id)
 {
     if (!p_id)
@@ -199,7 +199,7 @@ Visit *find_visit_by_p_id(Visit *v_head, Registration *reg_head, const char *p_i
     return NULL;
 }
 
-/* 根据医生ID查找看诊 */
+/* 根据医生ID查找看诊(需经挂号表关联: visit->reg->d_id) */
 Visit *find_visit_by_d_id(Visit *v_head, Registration *reg_head, const char *d_id)
 {
     if (!d_id)
@@ -458,7 +458,17 @@ void update_diagnosis(Visit *visit, const char *diagnosis)
  *看诊系统功能
  */
 
-/* 医生看诊患者 */
+/*
+ * 医生看诊患者(核心业务入口)
+ * 参数说明:
+ *   v_head  - 看诊链表, 用于保存诊断结果
+ *   v_id    - 当前看诊ID
+ *   e_head  - 检查链表的二级指针, 看诊中可新增检查项
+ *   r_head  - 挂号链表, 用于关联患者和医生信息
+ *   p_head  - 患者链表, 用于显示患者姓名
+ *   d_head  - 医生链表, 用于显示医生姓名
+ * 看诊中可执行: 开诊断、开检查、开处方、办理住院、办理出院
+ */
 void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Registration *r_head, Patient *p_head,
                           Doctor *d_head)
 {
@@ -490,8 +500,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             char diagnosis[MAX_LINE_LEN];
             while (1)
             {
@@ -532,8 +541,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             }
             break;
         }
-        case 2:
-        {
+        case 2: {
             while (1)
             {
                 clear_screen();
@@ -691,8 +699,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             }
             break;
         }
-        case 3:
-        {
+        case 3: {
             Prescription *pr_head = load_prescriptions_from_file();
             Drug *drug_head = load_drugs_from_file();
 
@@ -884,8 +891,7 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
         case 5:
             doctor_discharge_patient_hospitalization(v_id);
             break;
-        case 0:
-        {
+        case 0: {
             Visit *cur_visit = find_visit_by_v_id(v_head, v_id);
             if (cur_visit && cur_visit->status == VISIT_STATUS_ONGOING)
             {

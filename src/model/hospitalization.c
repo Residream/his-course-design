@@ -15,7 +15,7 @@
  * 住院基础功能
  */
 
-/* 从文件中加载住院数据 */
+/* 从文件中加载住院数据，文件格式: hosp_id|visit_id|p_id|ward_id|bed_id|admit_date|discharge_date|status */
 Hospitalization *load_hospitalizations_from_file(void)
 {
     FILE *fp = fopen(HOSPITALIZATIONS_FILE, "r");
@@ -454,7 +454,11 @@ void append_hospitalization(Hospitalization **head, Hospitalization *new_hosp)
     cur->next = new_hosp;
 }
 
-/* 入院 */
+/*
+ * 入院操作（纯内存修改，不涉及文件IO）
+ * 流程: 查重 → 优先在指定病房找空床 → 全院找空床 → 分配床位/更新占用数
+ * 调用方负责将修改后的链表持久化到文件
+ */
 int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const char *visit_id, const char *p_id,
                   const char *preferred_ward_id)
 {
@@ -463,6 +467,7 @@ int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const cha
     if (find_ongoing_hospitalization_by_p_id(*h_head, p_id))
         return 0; // 已住院中，不重复入院
 
+    /* 优先在指定病房查找空床，找不到则全院范围查找 */
     Bed *bed = NULL;
     if (preferred_ward_id && preferred_ward_id[0] != '\0')
         bed = find_first_free_bed_in_ward(b_head, preferred_ward_id);
@@ -485,13 +490,18 @@ int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const cha
     *node = create_hospitalization(hosp_id, visit_id, p_id, bed->ward_id, bed->bed_id, time(NULL), 0, 0);
     append_hospitalization(h_head, node);
 
+    /* 同步更新床位状态和病房占用数（内存级，尚未持久化） */
     bed->status = 1;
     ward->occupied += 1;
 
     return 1;
 }
 
-/* 出院 */
+/*
+ * 出院操作（纯内存修改，不涉及文件IO）
+ * 流程: 释放床位 → 减少病房占用数 → 标记出院时间
+ * 调用方负责将修改后的链表持久化到文件
+ */
 int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const char *hosp_id)
 {
     Hospitalization *h = find_hospitalization_by_h_id(h_head, hosp_id);
@@ -501,21 +511,29 @@ int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const 
     Bed *b = find_bed_by_b_id(b_head, h->bed_id);
     Ward *w = find_ward_by_w_id(w_head, h->ward_id);
 
+    /* 释放关联的床位和病房占用计数 */
     if (b)
         b->status = 0;
     if (w && w->occupied > 0)
         w->occupied -= 1;
 
+    /* 标记出院状态和时间 */
     h->status = 1;
     h->discharge_date = time(NULL);
     return 1;
 }
 
 /*
- *住院业务函数
+ * 住院业务函数
+ * 以下函数涉及住院/出院/床位三张表的联动修改,
+ * 采用"快照-修改-顺序保存-失败则恢复快照并重写"的回滚策略
  */
 
-/* 医生办理住院 */
+/*
+ * 医生办理住院(看诊中调用)
+ * 涉及三张表联动: hospitalizations + beds + wards
+ * 保存策略: 三张表顺序写入, 任一失败则全部回滚
+ */
 void doctor_admit_patient_hospitalization(const char *v_id)
 {
     Hospitalization *h_head = NULL;
@@ -668,11 +686,11 @@ void doctor_admit_patient_hospitalization(const char *v_id)
                         /* 最终传给 admit_patient 的优先病房参数 */
                         const char *final_pref_ward_id = NULL;
                         if (preferred_ward_id[0] != '\0')
-                            final_pref_ward_id = preferred_ward_id; /* 手动输入优先级最高 */
+                            final_pref_ward_id = preferred_ward_id; // 手动输入优先级最高
                         else if (auto_pref_ward_id)
-                            final_pref_ward_id = auto_pref_ward_id; /* 自动按科室优先 */
+                            final_pref_ward_id = auto_pref_ward_id; // 自动按科室优先
                         else
-                            final_pref_ward_id = NULL; /* 最后全院自动 */
+                            final_pref_ward_id = NULL; // 最后全院自动
 
                         /* 提示 */
                         if (preferred_ward_id[0] == '\0')
@@ -687,12 +705,15 @@ void doctor_admit_patient_hospitalization(const char *v_id)
                                 printf("当前科室无可用病房，系统将全院自动分配。\n");
                         }
 
+                        /* 执行入院(内存修改: 新增住院记录+占用床位+病房计数) */
                         if (admit_patient(&h_head, w_head, b_head, v->visit_id, r->p_id, final_pref_ward_id))
                         {
+                            /* 定位刚创建的记录和关联的床位/病房, 用于失败时回滚 */
                             Hospitalization *new_h = find_hospitalization_by_v_id(h_head, v->visit_id);
                             Bed *new_bed = new_h ? find_bed_by_b_id(b_head, new_h->bed_id) : NULL;
                             Ward *new_ward = new_h ? find_ward_by_w_id(w_head, new_h->ward_id) : NULL;
 
+                            /* 顺序保存三张表 */
                             int s1 = (save_hospitalizations_to_file(h_head) == 0);
                             int s2 = (save_beds_to_file(b_head) == 0);
                             int s3 = (save_wards_to_file(w_head) == 0);
@@ -701,6 +722,7 @@ void doctor_admit_patient_hospitalization(const char *v_id)
                                 printf("患者已成功办理住院！\n");
                             else
                             {
+                                /* 回滚: 从链表中摘除刚插入的住院节点 */
                                 if (new_h)
                                 {
                                     Hospitalization *cur = h_head, *prev = NULL;
@@ -719,11 +741,13 @@ void doctor_admit_patient_hospitalization(const char *v_id)
                                         cur = cur->next;
                                     }
                                 }
+                                /* 回滚: 恢复床位和病房占用计数 */
                                 if (new_bed)
                                     new_bed->status = BED_STATUS_FREE;
                                 if (new_ward && new_ward->occupied > 0)
                                     new_ward->occupied -= 1;
 
+                                /* 将恢复后的状态重新写入全部文件 */
                                 int rb1 = (save_hospitalizations_to_file(h_head) == 0);
                                 int rb2 = (save_beds_to_file(b_head) == 0);
                                 int rb3 = (save_wards_to_file(w_head) == 0);
@@ -757,7 +781,11 @@ void doctor_admit_patient_hospitalization(const char *v_id)
     free_doctors(d_head);
 }
 
-/* 医生办理出院 */
+/*
+ * 医生办理出院(看诊中调用)
+ * 涉及三张表联动: hospitalizations + beds + wards
+ * 保存策略: 三张表顺序写入, 任一失败则全部回滚
+ */
 void doctor_discharge_patient_hospitalization(const char *v_id)
 {
     Hospitalization *h_head = NULL;
@@ -856,6 +884,7 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                     }
                     else
                     {
+                        /* 第一步: 快照出院前的床位/病房/住院状态 */
                         Bed *old_bed = find_bed_by_b_id(b_head, h->bed_id);
                         Ward *old_ward = find_ward_by_w_id(w_head, h->ward_id);
                         int old_bed_status = old_bed ? old_bed->status : -1;
@@ -863,8 +892,10 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                         int old_h_status = h->status;
                         time_t old_discharge_date = h->discharge_date;
 
+                        /* 第二步: 执行出院(内存修改) */
                         if (discharge_patient(h_head, w_head, b_head, h->hosp_id))
                         {
+                            /* 第三步: 顺序保存三张表 */
                             int s1 = (save_hospitalizations_to_file(h_head) == 0);
                             int s2 = (save_beds_to_file(b_head) == 0);
                             int s3 = (save_wards_to_file(w_head) == 0);
@@ -873,6 +904,7 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                                 printf("患者已成功办理出院！\n");
                             else
                             {
+                                /* 第四步: 任一保存失败, 从快照恢复内存状态 */
                                 if (old_bed)
                                     old_bed->status = old_bed_status;
                                 if (old_ward)
@@ -880,6 +912,7 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                                 h->status = old_h_status;
                                 h->discharge_date = old_discharge_date;
 
+                                /* 第五步: 将恢复后的状态重新写入全部文件 */
                                 int rb1 = (save_hospitalizations_to_file(h_head) == 0);
                                 int rb2 = (save_beds_to_file(b_head) == 0);
                                 int rb3 = (save_wards_to_file(w_head) == 0);
@@ -1054,11 +1087,11 @@ void add_hospitalization_record()
             /* 最终传给 admit_patient 的优先病房参数 */
             const char *final_pref_ward_id = NULL;
             if (preferred_ward_id[0] != '\0')
-                final_pref_ward_id = preferred_ward_id; /* 手动输入优先级最高 */
+                final_pref_ward_id = preferred_ward_id; // 手动输入优先级最高
             else if (auto_pref_ward_id)
-                final_pref_ward_id = auto_pref_ward_id; /* 自动按科室优先 */
+                final_pref_ward_id = auto_pref_ward_id; // 自动按科室优先
             else
-                final_pref_ward_id = NULL; /* 最后全院自动 */
+                final_pref_ward_id = NULL; // 最后全院自动
 
             /* 提示 */
             if (preferred_ward_id[0] == '\0')
@@ -1136,7 +1169,11 @@ void add_hospitalization_record()
     free_doctors(d_head);
 }
 
-/* 删除住院记录 */
+/*
+ * 删除住院记录(管理员功能)
+ * 若记录为住院中状态, 删除时同步释放关联的床位和病房占用
+ * 涉及三张表联动, 保存失败时回滚
+ */
 void delete_hospitalization_record()
 {
     char hosp_id[MAX_ID_LEN];
@@ -1212,7 +1249,7 @@ void delete_hospitalization_record()
                 return;
             }
 
-            /** 先保存待回收的床位/病房ID 以及住院状态 */
+            /* 先保存待回收的床位/病房ID 以及住院状态 */
             char del_bed_id[MAX_ID_LEN] = {0};
             char del_ward_id[MAX_ID_LEN] = {0};
             int record_status = current->status;     // 缓存状态，防止 free 后失效
@@ -1225,18 +1262,18 @@ void delete_hospitalization_record()
             strncpy(del_bed_id, current->bed_id, sizeof(del_bed_id) - 1);
             strncpy(del_ward_id, current->ward_id, sizeof(del_ward_id) - 1);
 
-            /** 从住院链表删除 */
+            /* 从住院链表删除 */
             if (prev)
                 prev->next = current->next;
             else
                 h_head = current->next;
-            /** 先断链但不 free，等保存成功后再释放 */
+            /* 先断链但不 free，等保存成功后再释放 */
             deleted_node->next = NULL;
 
-            /** 仅当患者仍在住院中时，才回收床位和回退病房占用 */
+            /* 仅当患者仍在住院中时，才回收床位和回退病房占用 */
             if (record_status == 0)
             {
-                /** 回收床位 */
+                /* 回收床位 */
                 if (b_head)
                 {
                     bed_to_restore = find_bed_by_b_id(b_head, del_bed_id);
@@ -1247,7 +1284,7 @@ void delete_hospitalization_record()
                     }
                 }
 
-                /** 回退病房占用 */
+                /* 回退病房占用 */
                 if (w_head)
                 {
                     ward_to_restore = find_ward_by_w_id(w_head, del_ward_id);
@@ -1260,7 +1297,7 @@ void delete_hospitalization_record()
                 }
             }
 
-            /** 三份文件都成功才算删除提交 */
+            /* 三份文件都成功才算删除提交 */
             int s1 = (save_hospitalizations_to_file(h_head) == 0);
             int s2 = (b_head ? (save_beds_to_file(b_head) == 0) : 0);
             int s3 = (w_head ? (save_wards_to_file(w_head) == 0) : 0);
@@ -1272,7 +1309,7 @@ void delete_hospitalization_record()
             }
             else
             {
-                /** 回滚：恢复住院节点到原位置 */
+                /* 回滚：恢复住院节点到原位置 */
                 if (prev)
                 {
                     deleted_node->next = prev->next;
@@ -1289,7 +1326,7 @@ void delete_hospitalization_record()
                 if (ward_to_restore && old_ward_occupied >= 0)
                     ward_to_restore->occupied = old_ward_occupied;
 
-                /** 回滚后重新持久化 */
+                /* 回滚后重新持久化 */
                 int rb1 = (save_hospitalizations_to_file(h_head) == 0);
                 int rb2 = (b_head ? (save_beds_to_file(b_head) == 0) : 0);
                 int rb3 = (w_head ? (save_wards_to_file(w_head) == 0) : 0);
@@ -1322,7 +1359,11 @@ void delete_hospitalization_record()
     clear_screen();
 }
 
-/* 更新住院记录 */
+/*
+ * 更新住院记录(管理员功能)
+ * 支持修改: 状态(住院->出院)、转病房、转床位
+ * 每项修改均涉及关联表联动和回滚保护
+ */
 void update_hospitalization_record(void)
 {
     char hosp_id[MAX_ID_LEN];
@@ -1472,17 +1513,17 @@ void update_hospitalization_record(void)
                     strncpy(old_ward_id, current->ward_id, sizeof(old_ward_id) - 1);
                     strncpy(old_bed_id, current->bed_id, sizeof(old_bed_id) - 1);
 
-                    /** 释放原床位 */
+                    /* 释放原床位 */
                     Bed *old_bed = find_bed_by_b_id(b_head, current->bed_id);
                     int old_old_bed_status = old_bed ? old_bed->status : -1;
                     int old_auto_bed_status = auto_bed->status;
                     if (old_bed)
                         old_bed->status = 0;
 
-                    /** 占用新床位 */
+                    /* 占用新床位 */
                     auto_bed->status = 1;
 
-                    /** 调整病房占用计数 */
+                    /* 调整病房占用计数 */
                     Ward *old_ward = find_ward_by_w_id(w_head, current->ward_id);
                     int old_old_ward_occupied = old_ward ? old_ward->occupied : -1;
                     int old_new_ward_occupied = new_ward->occupied;
@@ -1490,14 +1531,14 @@ void update_hospitalization_record(void)
                         old_ward->occupied -= 1;
                     new_ward->occupied += 1;
 
-                    /** 更新住院记录的病房和床位 */
+                    /* 更新住院记录的病房和床位 */
                     strncpy(current->ward_id, new_ward_id, sizeof(current->ward_id) - 1);
                     current->ward_id[sizeof(current->ward_id) - 1] = '\0';
 
                     strncpy(current->bed_id, auto_bed->bed_id, sizeof(current->bed_id) - 1);
                     current->bed_id[sizeof(current->bed_id) - 1] = '\0';
 
-                    /** 新住院位置落盘：住院表+病房表+床位表 */
+                    /* 新住院位置落盘：住院表+病房表+床位表 */
                     int s1 = (save_hospitalizations_to_file(h_head) == 0);
                     int s2 = (save_wards_to_file(w_head) == 0);
                     int s3 = (save_beds_to_file(b_head) == 0);
@@ -1519,7 +1560,7 @@ void update_hospitalization_record(void)
                         strncpy(current->bed_id, old_bed_id, sizeof(current->bed_id) - 1);
                         current->bed_id[sizeof(current->bed_id) - 1] = '\0';
 
-                        /** 回滚后的原状态重新落盘 */
+                        /* 回滚后的原状态重新落盘 */
                         int rb1 = (save_hospitalizations_to_file(h_head) == 0);
                         int rb2 = (save_wards_to_file(w_head) == 0);
                         int rb3 = (save_beds_to_file(b_head) == 0);
@@ -1673,7 +1714,7 @@ void update_hospitalization_record(void)
                     strncpy(current->bed_id, new_bed_id, sizeof(current->bed_id) - 1);
                     current->bed_id[sizeof(current->bed_id) - 1] = '\0';
 
-                    /** 床位调整落盘：住院表+床位表 */
+                    /* 床位调整落盘：住院表+床位表 */
                     int s1 = (save_hospitalizations_to_file(h_head) == 0);
                     int s2 = (save_beds_to_file(b_head) == 0);
                     if (s1 && s2)
@@ -1687,7 +1728,7 @@ void update_hospitalization_record(void)
                         strncpy(current->bed_id, old_bed_id, sizeof(current->bed_id) - 1);
                         current->bed_id[sizeof(current->bed_id) - 1] = '\0';
 
-                        /** 回滚后重写文件，尽量回到一致状态 */
+                        /* 回滚后重写文件，尽量回到一致状态 */
                         int rb1 = (save_hospitalizations_to_file(h_head) == 0);
                         int rb2 = (save_beds_to_file(b_head) == 0);
                         printf("床位更新失败：保存文件失败。");
@@ -1919,7 +1960,7 @@ void query_hospitalization_record(void)
             continue;
         }
 
-        if (select == 4) /* 按患者姓名模糊查询住院记录 */
+        if (select == 4) // 按患者姓名模糊查询住院记录
         {
             char name_query[MAX_INPUT_LEN];
             int found = 0;

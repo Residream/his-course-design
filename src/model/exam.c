@@ -12,7 +12,7 @@
  * 检查基础功能
  */
 
-/* 从文件中加载检查数据 */
+/* 从文件中加载检查数据，文件格式: exam_id|visit_id|item|result */
 Exam *load_exams_from_file(void)
 {
     FILE *fp = fopen(EXAMS_FILE, "r");
@@ -140,7 +140,7 @@ Exam *find_exam_by_v_id(Exam *exam_head, const char *visit_id)
     return NULL;
 }
 
-/* 根据患者ID查找检查 */
+/* 根据患者ID查找检查(需经三表关联: exam->visit->reg->p_id) */
 Exam *find_exam_by_p_id(Exam *exam_head, Visit *visit_head, Registration *reg_head, const char *p_id)
 {
     if (!p_id)
@@ -453,10 +453,10 @@ void append_exam(Exam **head, Exam *new_exam)
 }
 
 /*
- *检查系统功能
+ * 检查系统功能(增删改查)
  */
 
-/* 添加检查记录 */
+/* 添加检查记录(管理员/医生功能, 需指定看诊ID关联) */
 void add_exam_record()
 {
     char exam_id[MAX_ID_LEN];
@@ -795,8 +795,7 @@ void query_exam_record()
 
         switch (select)
         {
-        case 1:
-        {
+        case 1: {
             char exam_id[MAX_ID_LEN];
 
             printf("请输入检查ID(输入0返回): ");
@@ -834,8 +833,7 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 2:
-        {
+        case 2: {
             char visit_id[MAX_ID_LEN];
 
             printf("请输入看诊ID(输入0返回): ");
@@ -880,8 +878,7 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 3:
-        {
+        case 3: {
             char p_id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(p_id, sizeof(p_id));
@@ -925,8 +922,7 @@ void query_exam_record()
             clear_screen();
             break;
         }
-        case 4:
-        {
+        case 4: {
             char d_id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(d_id, sizeof(d_id));

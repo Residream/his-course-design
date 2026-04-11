@@ -10,7 +10,7 @@
  * 挂号基础操作
  */
 
-/* 从文件中加载挂号数据 */
+/* 从文件中加载挂号数据，文件格式: reg_id|p_id|d_id|when(时间戳)|status */
 Registration *load_registrations_from_file(void)
 {
     FILE *fp = fopen(REGISTRATIONS_FILE, "r");

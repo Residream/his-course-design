@@ -291,7 +291,7 @@ void patient_register()
 
         if (age_buf[start] == '\0')
         {
-            is_number = 0; /* 只有符号没有数字 */
+            is_number = 0; // 只有符号没有数字
         }
         else
         {

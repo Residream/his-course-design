@@ -786,7 +786,12 @@ void add_drug()
     clear_screen();
 }
 
-/* 删除药品 */
+/*
+ * 删除药品(管理员功能)
+ * 级联操作: 同时清除该药品在 pharmacy_drugs 表中的所有库存关联
+ * 涉及两张表联动: drugs + pharmacy_drugs
+ * 保存失败时回滚两张表
+ */
 void delete_drug()
 {
     char id[MAX_ID_LEN];
@@ -828,7 +833,8 @@ void delete_drug()
 
             PharmacyDrug *pd_head = load_pharmacy_drugs_from_file();
             PharmacyDrug *pd_prev = NULL, *pd_cur = pd_head;
-            PharmacyDrug *removed_pd_head = NULL, *removed_pd_tail = NULL; // 暂存被移除的药房库存节点，保存失败时可直接拼回原链表
+            PharmacyDrug *removed_pd_head = NULL,
+                         *removed_pd_tail = NULL; // 暂存被移除的药房库存节点，保存失败时可直接拼回原链表
             while (pd_cur)
             {
                 if (strcmp(pd_cur->drug_id, id) == 0)
@@ -861,7 +867,7 @@ void delete_drug()
                 head = cur->next;
             deleted_drug->next = NULL;
 
-            /** 两份文件都成功才算提交，任一失败就走回滚 */
+            /* 两份文件都成功才算提交，任一失败就走回滚 */
             int s_pd = save_pharmacy_drugs_to_file(pd_head);
             int s_d = save_drugs_to_file(head);
             if (s_pd == 0 && s_d == 0)
@@ -877,7 +883,7 @@ void delete_drug()
             }
             else
             {
-                /** 先恢复主药品链 */
+                /* 先恢复主药品链 */
                 if (prev)
                 {
                     deleted_drug->next = prev->next;
@@ -889,14 +895,14 @@ void delete_drug()
                     head = deleted_drug;
                 }
 
-                /** 再恢复药房库存关联链 */
+                /* 再恢复药房库存关联链 */
                 if (removed_pd_head)
                 {
                     removed_pd_tail->next = pd_head;
                     pd_head = removed_pd_head;
                 }
 
-                /** 回滚后的状态重新落盘，尽量保证文件与内存一致 */
+                /* 回滚后的状态重新落盘，尽量保证文件与内存一致 */
                 int rb1 = save_pharmacy_drugs_to_file(pd_head);
                 int rb2 = save_drugs_to_file(head);
                 printf("删除失败：保存文件失败。");
@@ -1102,7 +1108,7 @@ void update_drug()
                     if (pd_count == 1 && single_pd)
                         single_pd->quantity = old_single_qty;
 
-                    /** 恢复内存后，再把回滚结果写回文件 */
+                    /* 恢复内存后，再把回滚结果写回文件 */
                     int rb1 = (save_drugs_to_file(head) == 0);
                     int rb2 = 1;
                     if (pd_count == 1)
@@ -1350,7 +1356,12 @@ void add_pharmacy()
     clear_screen();
 }
 
-/* 删除药房 */
+/*
+ * 删除药房
+ * 级联操作: 同时清除该药房在 pharmacy_drugs 表中的所有库存关联记录
+ * 涉及两张表联动: pharmacies + pharmacy_drugs
+ * 保存失败时回滚
+ */
 void delete_pharmacy()
 {
     char id[MAX_ID_LEN];
@@ -1424,7 +1435,7 @@ void delete_pharmacy()
                 head = cur->next;
             deleted_pharmacy->next = NULL;
 
-            /** 先保存关联表，再保存主药房表 */
+            /* 先保存关联表，再保存主药房表 */
             int s_pd = save_pharmacy_drugs_to_file(pd_head);
             int s_p = save_pharmacies_to_file(head);
             if (s_pd == 0 && s_p == 0)
@@ -1440,7 +1451,7 @@ void delete_pharmacy()
             }
             else
             {
-                /** 回滚药房链 */
+                /* 回滚药房链 */
                 if (prev)
                 {
                     deleted_pharmacy->next = prev->next;
@@ -1452,14 +1463,14 @@ void delete_pharmacy()
                     head = deleted_pharmacy;
                 }
 
-                /** 回滚库存关联链 */
+                /* 回滚库存关联链 */
                 if (removed_pd_head)
                 {
                     removed_pd_tail->next = pd_head;
                     pd_head = removed_pd_head;
                 }
 
-                /** 将回滚后的状态持久化 */
+                /* 将回滚后的状态持久化 */
                 int rb1 = save_pharmacy_drugs_to_file(pd_head);
                 int rb2 = save_pharmacies_to_file(head);
                 printf("删除失败：保存文件失败。");
@@ -1594,7 +1605,12 @@ void show_all_pharmacies()
  * 药房药品管理
  */
 
-/* 药房入库 */
+/*
+ * 药房入库
+ * 涉及两张表联动: pharmacy_drugs(药房库存) + drugs(药品总库存)
+ * 若药房已有该药品则追加数量, 否则新建关联记录
+ * 保存失败时回滚两张表到操作前状态
+ */
 void stock_in_pharmacy()
 {
     Pharmacy *p_head = load_pharmacies_from_file();
@@ -1690,19 +1706,22 @@ void stock_in_pharmacy()
         }
     }
 
-    int old_stock = target_d->stock; // 文件保存失败时用于恢复
+    /* 第一步: 快照修改前的库存数值 */
+    int old_stock = target_d->stock;
     int old_pd_qty = found ? target_pd->quantity : 0;
+
+    /* 第二步: 修改内存中的库存 */
     if (found)
         target_pd->quantity += add_qty;
-
-    // 同步增加药品总库存
     target_d->stock += add_qty;
 
+    /* 第三步: 顺序保存两张表 */
     int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
     int d_save_rc = save_drugs_to_file(d_head);
 
     if (pd_save_rc != 0 || d_save_rc != 0)
     {
+        /* 第四步(失败回滚): 从快照恢复库存数值 */
         target_d->stock = old_stock;
         if (found)
         {
@@ -1710,7 +1729,7 @@ void stock_in_pharmacy()
         }
         else
         {
-            /** 新建节点场景：回滚时需把刚插入节点从链表摘除 */
+            /* 新建节点场景: 回滚时需把刚插入节点从链表摘除 */
             PharmacyDrug *cur = pd_head, *prev = NULL;
             while (cur)
             {
@@ -1728,7 +1747,7 @@ void stock_in_pharmacy()
             }
         }
 
-        /** 回滚完成后再次落盘 */
+        /* 第五步: 将恢复后的状态重新写入全部文件 */
         int rb_pd = save_pharmacy_drugs_to_file(pd_head);
         int rb_d = save_drugs_to_file(d_head);
 
@@ -1752,7 +1771,12 @@ cleanup:
     clear_screen();
 }
 
-/* 处方发药 */
+/*
+ * 处方发药(医生/管理员均可调用)
+ * 业务流程: 选择处方 -> 选择药房 -> 校验库存 -> 扣减药房库存和药品总库存
+ * 涉及两张表联动: pharmacy_drugs + drugs
+ * 保存失败时回滚扣减操作
+ */
 void dispense_prescription_drug()
 {
     if (!g_session.logged_in)
@@ -1762,7 +1786,7 @@ void dispense_prescription_drug()
         return;
     }
 
-    // 1. 严格校验：只有医生可以发药
+    /* 1. 严格校验：只有医生可以发药 */
     if (strcmp(g_session.role, "doctor") != 0)
     {
         printf("发药拒绝：只有医生本人具有处方发药权限！\n");
@@ -1795,7 +1819,7 @@ void dispense_prescription_drug()
     printf("===== 处方发药业务 (当前医生: %s, 所属科室: %s) =====\n", me->name, my_dept);
     printf("\n以下是您开具的处方列表：\n");
 
-    // 2. 筛选并打印当前医生名下的处方
+    /* 2. 筛选并打印当前医生名下的处方 */
     int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
     calc_prescription_width(pr_head, patient_head, doc_head, d_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
                             &freq_w);
@@ -1805,7 +1829,7 @@ void dispense_prescription_drug()
 
     for (Prescription *c = pr_head; c; c = c->next)
     {
-        // 核心过滤：只显示自己的处方
+        /* 核心过滤：只显示自己的处方 */
         if (strcmp(c->d_id, g_session.user_id) == 0)
         {
             print_prescription(c, patient_head, doc_head, d_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
@@ -1821,14 +1845,14 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    // 3. 输入待履行的处方ID
+    /* 3. 输入待履行的处方ID */
     char pr_id[MAX_ID_LEN];
     printf("\n请输入需履行的处方ID(输入0返回): ");
     safe_input(pr_id, sizeof(pr_id));
     if (strcmp(pr_id, "0") == 0 || pr_id[0] == '\0')
         goto cleanup;
 
-    // 寻找处方
+    /* 寻找处方 */
     Prescription *pr = NULL;
     for (Prescription *c = pr_head; c; c = c->next)
     {
@@ -1846,7 +1870,7 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    // 4. 二次拦截：强制校验该处方是否属于当前医生
+    /* 4. 二次拦截：强制校验该处方是否属于当前医生 */
     if (strcmp(pr->d_id, g_session.user_id) != 0)
     {
         printf("\n【拦截告警】发药拒绝！您只能履行自己开具的处方。\n");
@@ -1862,7 +1886,7 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    // 5. 科室权限校验拦截 (保留原有逻辑)
+    /* 5. 科室权限校验拦截 (保留原有逻辑) */
     if (strcmp(target_drug->department, "通用") != 0 && strcmp(target_drug->department, my_dept) != 0)
     {
         printf("\n【拦截告警】发药拒绝！\n");
@@ -1893,7 +1917,7 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    // 6. 执行出库扣减
+    /* 6. 执行出库扣减 */
     char phy_id[MAX_ID_LEN];
     printf("\n请指定扣减库存的出库药房ID(输入0取消): ");
     safe_input(phy_id, sizeof(phy_id));
@@ -1934,7 +1958,7 @@ void dispense_prescription_drug()
         wait_enter();
         goto cleanup;
     }
-    // 检查全局药品库存是否充足
+    /* 检查全局药品库存是否充足 */
     if (qty > target_drug->stock)
     {
         printf("出库失败！该药品全局库存仅剩 %d 件，库存不足！\n", target_drug->stock);
@@ -1942,12 +1966,15 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    // 扣减库存
-    int old_pd_qty = target_pd->quantity; // 扣减前快照，用于失败回滚
+    /* 第一步: 快照扣减前的库存 */
+    int old_pd_qty = target_pd->quantity;
     int old_stock = target_drug->stock;
+
+    /* 第二步: 扣减药房库存和药品总库存 */
     target_pd->quantity -= qty;
     target_drug->stock -= qty;
 
+    /* 第三步: 顺序保存两张表 */
     int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
     int d_save_rc = save_drugs_to_file(d_head);
 
@@ -1955,10 +1982,10 @@ void dispense_prescription_drug()
         printf("\n处方发药成功！已从指定药房扣减库存。\n");
     else
     {
+        /* 第四步(失败回滚): 从快照恢复库存并重新写入文件 */
         target_pd->quantity = old_pd_qty;
         target_drug->stock = old_stock;
 
-        /** 回滚后的库存重新保存 */
         int rb_pd = save_pharmacy_drugs_to_file(pd_head);
         int rb_d = save_drugs_to_file(d_head);
 
