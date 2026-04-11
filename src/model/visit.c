@@ -885,10 +885,35 @@ void doctor_visit_patient(Visit *v_head, const char *v_id, Exam **e_head, Regist
             doctor_discharge_patient_hospitalization(v_id);
             break;
         case 0:
-            printf("结束看诊！\n");
+        {
+            Visit *cur_visit = find_visit_by_v_id(v_head, v_id);
+            if (cur_visit && cur_visit->status == VISIT_STATUS_ONGOING)
+            {
+                char confirm[MAX_INPUT_LEN];
+                printf("是否将本次看诊标记为已完成？(y/n): ");
+                safe_input(confirm, sizeof(confirm));
+                if (confirm[0] == 'y' || confirm[0] == 'Y')
+                {
+                    cur_visit->status = VISIT_STATUS_DONE;
+                    if (save_visits_to_file(v_head) != 0)
+                    {
+                        cur_visit->status = VISIT_STATUS_ONGOING;
+                        printf("保存失败，看诊状态未更改。\n");
+                    }
+                    else
+                    {
+                        printf("看诊已标记为已完成！\n");
+                    }
+                }
+                else
+                {
+                    printf("看诊保持进行中状态。\n");
+                }
+            }
             wait_enter();
             clear_screen();
             return;
+        }
         default:
             printf("未知错误: %d\n", select);
             break;

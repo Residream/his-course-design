@@ -606,13 +606,13 @@ void update_doctor()
     }
 
     int id_w, name_w, gen_w, dept_w;
-    calc_doctor_width(doctor_head, &id_w, &name_w, &gen_w, &dept_w);
 
     char buf[MAX_INPUT_LEN];
     int select;
 
     while (1)
     {
+        calc_doctor_width(doctor_head, &id_w, &name_w, &gen_w, &dept_w);
         clear_screen();
         printf("找到医生: %s (%s)\n", doctor->name, doctor->id);
         print_doctor_header(id_w, name_w, gen_w, dept_w);
@@ -1017,13 +1017,13 @@ void doctor_update_my_info()
     }
 
     int id_w, name_w, gen_w, dept_w;
-    calc_doctor_width(doctor_head, &id_w, &name_w, &gen_w, &dept_w);
 
     char buf[MAX_INPUT_LEN];
     int select;
 
     while (1)
     {
+        calc_doctor_width(doctor_head, &id_w, &name_w, &gen_w, &dept_w);
         clear_screen();
         printf("我的信息：\n");
         print_doctor_header(id_w, name_w, gen_w, dept_w);

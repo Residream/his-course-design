@@ -664,13 +664,13 @@ void update_patient()
     }
 
     int id_w, name_w, gen_w, age_w;
-    calc_patient_width(patient_head, &id_w, &name_w, &gen_w, &age_w);
 
     char buf[MAX_INPUT_LEN];
     int select;
 
     while (1)
     {
+        calc_patient_width(patient_head, &id_w, &name_w, &gen_w, &age_w);
         clear_screen();
         printf("找到患者: %s (%s)\n", patient->name, patient->id);
         print_patient_header(id_w, name_w, gen_w, age_w);
@@ -1026,6 +1026,8 @@ void show_all_patients()
             wait_enter();
         }
     }
+
+    free_patients(patient_head);
 }
 
 /* 患者查看个人信息 */
@@ -1102,13 +1104,13 @@ void patient_update_my_info()
     }
 
     int id_w, name_w, gen_w, age_w;
-    calc_patient_width(patient_head, &id_w, &name_w, &gen_w, &age_w);
 
     char buf[MAX_INPUT_LEN];
     int select;
 
     while (1)
     {
+        calc_patient_width(patient_head, &id_w, &name_w, &gen_w, &age_w);
         clear_screen();
         printf("我的信息：\n");
         print_patient_header(id_w, name_w, gen_w, age_w);

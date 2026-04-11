@@ -1092,4 +1092,10 @@ void show_all_exam_records()
             wait_enter();
         }
     }
+
+    free_exams(e_head);
+    free_visits(v_head);
+    free_registrations(r_head);
+    free_patients(p_head);
+    free_doctors(d_head);
 }
