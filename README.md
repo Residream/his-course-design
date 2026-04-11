@@ -1,6 +1,19 @@
 # HIS — 医疗管理系统
 
-基于 C 语言的终端医疗管理系统（Hospital Information System），采用链表数据结构与管道符分隔的平文件持久化方案，支持患者、医生、管理员三种角色的登录与业务操作。
+> 吉林大学（JLU）2025级《程序设计基础课程设计》课程作业
+>
+> 基于 C 语言的终端医疗管理系统（Hospital Information System），采用链表数据结构与管道符分隔的平文件持久化方案，支持患者、医生、管理员三种角色的登录与业务操作。
+
+### 平台支持
+
+| 平台 | 编译器 | 状态 |
+|------|--------|------|
+| Windows | MinGW (GCC) | ✅ 主要开发环境 |
+| macOS | Clang | ✅ 主要开发环境 |
+| Linux | GCC | ✅ 已验证 |
+| Windows | MSVC | ✅ 已适配 |
+
+> 需要 C11 标准支持和 CMake ≥ 3.10。
 
 ---
 
@@ -34,7 +47,7 @@
 | 患者管理  | 增删改查（支持姓名模糊搜索）、分页浏览                                           |
 | 医生管理  | 增删改查（支持姓名/科室模糊搜索）                                                |
 | 科室管理  | 增删改查                                                                         |
-| 病房/床位 | 病房管理、床位分配与释放                                                         |
+| 病房/床位 | 病房管理（含 ICU/普通/VIP 三种类型与科室关联）、床位分配与释放                    |
 | 药品管理  | 药品信息（支持名称模糊搜索）、药房管理、库存管理                                 |
 | 医疗记录  | 挂号、看诊、检查、住院（支持姓名模糊搜索）、处方（支持药品名称模糊搜索）记录管理 |
 | 数据分析  | 病房利用率、科室门诊趋势、病房优化、药品使用、住院时长分布与预测                 |
@@ -102,7 +115,7 @@ HIS/
 │   │   ├── prescription.c              处方管理
 │   │   └── analytics.c                 数据分析报表与统计逻辑
 │   └── ui/
-│       └── menu.c                      三角色菜单驱动（~1960 行）
+│       └── menu.c                      三角色菜单驱动
 ├── data/                           数据文件（管道符分隔 .txt）
 │   ├── patients.txt, doctors.txt, admins.txt
 │   ├── departments.txt, registrations.txt, visits.txt
@@ -111,18 +124,14 @@ HIS/
 │   ├── drugs.txt, pharmacies.txt, pharmacy_drugs.txt
 │   └── prescriptions.txt
 ├── tools/
-│   └── gen_data.py                 测试数据生成脚本（Python）
+│   ├── gen_data.py                 测试数据生成脚本（Python）
+│   └── DEMO_GUIDE.md               答辩演示流程指南
 └── build/                          构建产物（不入版本控制）
 ```
 
 ---
 
 ## 构建与运行
-
-### 环境要求
-
-- C 编译器（GCC / MinGW / Clang / MSVC，需支持 C11）
-- CMake ≥ 3.10
 
 ### 构建步骤
 
@@ -150,7 +159,7 @@ Debug\his.exe
 
 > 可执行文件需在 `build/` 目录下运行，程序通过 `../data/` 相对路径访问数据文件。
 
-### 默认管理员账号
+### 默认账号
 
 使用 `gen_data.py` 生成的测试数据中，管理员用户名为 `root`，密码为 `root`。患者密码格式为 `p` + 编号（如 `p0001`），医生密码格式为 `d` + 编号（如 `d0001`）。
 
@@ -160,7 +169,7 @@ Debug\his.exe
 python tools/gen_data.py
 ```
 
-脚本自动定位项目根目录下的 `data/` 目录，无论从哪个目录运行都能正确生成。生成内容包括：130 名患者、30 名医生、5 个科室、8 个病房、28 种药品、3 个药房，以及完整的挂号→看诊→检查→处方→住院全流程关联数据。
+脚本自动定位项目根目录下的 `data/` 目录，无论从哪个目录运行都能正确生成。生成内容包括：130 名患者、30 名医生、5 个科室、8 个病房（ICU/普通/VIP 三种类型）、35 种药品、3 个药房，以及完整的挂号→看诊→检查→处方→住院全流程关联数据。
 
 ---
 
@@ -216,9 +225,3 @@ python tools/gen_data.py
 ### 编码说明
 
 源码使用 UTF-8 编码。CMakeLists.txt 同时支持 GCC 和 MSVC 编译器（自动检测）。若在 Windows CMD/PowerShell 中遇到中文乱码，可取消 `CMakeLists.txt` 中 `if(WIN32)` 注释块，启用 `-fexec-charset=GBK` 编译选项后重新构建。
-
-### 代码风格补充
-
-- 公共宏统一集中在 [`config.h`](include/core/config.h) 和 [`analytics.h`](include/model/analytics.h) 中声明，并附带用途备注
-- [`analytics`](include/model/analytics.h) 模块内部常量统一采用 `ANALYTICS_*` 前缀，避免与全局配置或其他模块宏冲突
-- 通用渲染函数统一复用 [`render_bar()`](src/core/utils.c:274) 与 [`render_hbar()`](src/core/utils.c:311)，避免重复声明与实现
