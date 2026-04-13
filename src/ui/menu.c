@@ -820,7 +820,6 @@ void manager_drug_menu()
                 menu_split();
                 menu_item(1, "向药房添加药品");
                 menu_item(2, "查询药房中的药品");
-                menu_item(3, "处方发药");
                 menu_blank();
                 menu_item(0, "返回上级菜单");
                 menu_bottom();
@@ -828,7 +827,7 @@ void manager_drug_menu()
                 printf("请输入您的选择: ");
                 safe_input(buf, sizeof(buf));
 
-                if (!validate_choice(buf, 3))
+                if (!validate_choice(buf, 2))
                 {
                     printf("输入有误，请重新选择！\n");
                     wait_enter();
@@ -845,9 +844,6 @@ void manager_drug_menu()
                     break;
                 case 2:
                     show_pharmacy_drugs();
-                    break;
-                case 3:
-                    dispense_prescription_drug();
                     break;
                 case 0:
                     clear_screen();
