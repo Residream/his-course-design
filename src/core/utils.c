@@ -2,6 +2,7 @@
  * 工具函数模块
  */
 #include "core/utils.h"
+#include <errno.h>
 
 /*
  * 工具函数实现
@@ -109,20 +110,34 @@ int is_all_chinese_utf8(const char *s)
 /* 校验有效输入：支持多位数字，范围0~max */
 int validate_choice(const char *str, int max)
 {
+    /* 空值与空串防御 */
     if (!str || str[0] == '\0')
         return 0;
 
-    /* 检查是否全为数字 */
+    /* 拒绝前导零(允许单独输入一个 "0") */
+    if (str[0] == '0' && str[1] != '\0')
+        return 0;
+
+    /* 确保全为数字(拒绝负号、小数点、空格等) */
     for (int i = 0; str[i] != '\0'; i++)
     {
         if (str[i] < '0' || str[i] > '9')
             return 0;
     }
 
+    /* 安全地转换为 long */
+    errno = 0;
     char *endptr;
     long val = strtol(str, &endptr, 10);
-    if (*endptr != '\0' || val < 0 || val > max)
+
+    /* 检查是否发生整数溢出 */
+    if (errno == ERANGE)
         return 0;
+
+    /* 校验上限 */
+    if (val > max)
+        return 0;
+
     return 1;
 }
 
