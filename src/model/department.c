@@ -117,12 +117,45 @@ int is_valid_department(const char *dept)
 }
 
 /*
+ * 科室功能函数
+ */
+
+/* 创建科室 */
+Department create_department(const char *name)
+{
+    Department dept;
+    memset(&dept, 0, sizeof(Department));
+    strncpy(dept.name, name, sizeof(dept.name) - 1);
+    dept.name[sizeof(dept.name) - 1] = '\0';
+    return dept;
+}
+
+/* 尾插科室 */
+void append_department(Department **head, Department *new_dept)
+{
+    if (!new_dept)
+        return;
+
+    Department *current = *head;
+    if (!current)
+    {
+        *head = new_dept;
+        return;
+    }
+
+    while (current->next)
+        current = current->next;
+    current->next = new_dept;
+}
+
+/*
  * 科室系统功能
  */
 void add_department()
 {
     char name[MAX_NAME_LEN];
 
+    /* 获取科室名称 */
     while (1)
     {
         clear_screen();
@@ -161,34 +194,16 @@ void add_department()
             continue;
         }
 
-        Department new_dept;
-        memset(&new_dept, 0, sizeof(Department));
-        strncpy(new_dept.name, name, sizeof(new_dept.name) - 1);
-        new_dept.name[sizeof(new_dept.name) - 1] = '\0';
+        Department *new_node = (Department *)malloc(sizeof(Department));
+        if (!new_node)
+        {
+            printf("内存分配失败！\n");
+            free_departments(dept_head);
+            return;
+        }
 
-        if (!dept_head)
-        {
-            dept_head = (Department *)malloc(sizeof(Department));
-            if (!dept_head)
-            {
-                printf("内存分配失败！\n");
-                return;
-            }
-            *dept_head = new_dept;
-        }
-        else
-        {
-            Department *new_node = (Department *)malloc(sizeof(Department));
-            if (!new_node)
-            {
-                printf("内存分配失败！\n");
-                free_departments(dept_head);
-                return;
-            }
-            *new_node = new_dept;
-            new_node->next = dept_head;
-            dept_head = new_node;
-        }
+        *new_node = create_department(name);
+        append_department(&dept_head, new_node);
 
         if (save_departments_to_file(dept_head) != 0)
             printf("保存科室信息失败！\n");
