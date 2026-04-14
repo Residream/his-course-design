@@ -4,6 +4,7 @@
 #include "model/drug.h"
 #include "core/session.h"
 #include "core/utils.h"
+#include "model/department.h"
 #include "model/doctor.h"
 #include "model/patient.h"
 #include "model/prescription.h"
@@ -647,6 +648,21 @@ Pharmacy *get_nth_pharmacy(Pharmacy *head, int n)
     return head;
 }
 
+/* 打印药房列表提示（在需要输入药房ID前调用，方便用户查阅） */
+void print_pharmacy_hint()
+{
+    Pharmacy *head = load_pharmacies_from_file();
+    if (!head)
+    {
+        printf("（暂无药房数据）\n");
+        return;
+    }
+    printf("当前可用药房:\n");
+    for (Pharmacy *p = head; p; p = p->next)
+        printf("  %-10s %s（%s）\n", p->id, p->name, p->location);
+    free_pharmacies(head);
+}
+
 /*
  * 药品系统功能
  */
@@ -667,11 +683,9 @@ void add_drug()
     int id_num = generate_next_drug_id(head);
     snprintf(new_drug->id, sizeof(new_drug->id), "DR%04d", id_num);
 
-    printf("提示：输入 '0' 可中途取消添加\n");
-
     while (1)
     {
-        printf("请输入药品通用名: ");
+        printf("请输入药品通用名(汉字 | 输入0返回): ");
         safe_input(new_drug->generic_name, sizeof(new_drug->generic_name));
         if (strcmp(new_drug->generic_name, "0") == 0)
         {
@@ -684,12 +698,17 @@ void add_drug()
             printf("通用名不能为空！\n");
             continue;
         }
+        if (is_all_chinese_utf8(new_drug->generic_name) == 0)
+        {
+            printf("通用名只能包含汉字！\n");
+            continue;
+        }
         break;
     }
 
     while (1)
     {
-        printf("请输入药品商品名: ");
+        printf("请输入药品商品名(汉字 | 输入0返回): ");
         safe_input(new_drug->trade_name, sizeof(new_drug->trade_name));
         if (strcmp(new_drug->trade_name, "0") == 0)
         {
@@ -702,12 +721,17 @@ void add_drug()
             printf("商品名不能为空！\n");
             continue;
         }
+        if (is_all_chinese_utf8(new_drug->trade_name) == 0)
+        {
+            printf("商品名只能包含汉字！\n");
+            continue;
+        }
         break;
     }
 
     while (1)
     {
-        printf("请输入药品别名(若无请输入'无'): ");
+        printf("请输入药品别名(汉字 | 输入0返回): ");
         safe_input(new_drug->alias, sizeof(new_drug->alias));
         if (strcmp(new_drug->alias, "0") == 0)
         {
@@ -720,29 +744,48 @@ void add_drug()
             printf("别名不能为空！\n");
             continue;
         }
+        if (is_all_chinese_utf8(new_drug->alias) == 0 && strcmp(new_drug->alias, "无") != 0)
+        {
+            printf("别名只能包含汉字！\n");
+            continue;
+        }
         break;
     }
 
     char price_input[32];
     while (1)
     {
-        printf("请输入药品价格: ");
+        printf("请输入药品价格(输入0返回): ");
         safe_input(price_input, sizeof(price_input));
+
         if (strcmp(price_input, "0") == 0)
         {
             free(new_drug);
             free_drugs(head);
             return;
         }
-        if (parse_nonnegative_float_strict(price_input, &new_drug->price))
-            break;
-        printf("输入有误，请重新输入正确价格！\n");
+
+        char *endptr;
+        errno = 0;
+        double p_d = strtod(price_input, &endptr);
+        if (endptr == price_input || *endptr != '\0' || p_d < 0)
+        {
+            printf("输入有误，请重新输入正确价格！\n");
+            continue;
+        }
+        if (p_d > MAX_DRUG_PRICE)
+        {
+            printf("价格超出上限 %.2f，请重新输入！\n", MAX_DRUG_PRICE);
+            continue;
+        }
+        new_drug->price = (float)p_d;
+        break;
     }
 
     char stock_input[32];
     while (1)
     {
-        printf("请输入药品初始总库存: ");
+        printf("请输入药品初始总库存(输入0返回): ");
         safe_input(stock_input, sizeof(stock_input));
         if (strcmp(stock_input, "0") == 0)
         {
@@ -750,21 +793,44 @@ void add_drug()
             free_drugs(head);
             return;
         }
-        if (parse_nonnegative_int_strict(stock_input, &new_drug->stock))
-            break;
-        printf("输入有误，请重新输入正确库存！\n");
+        if (!parse_nonnegative_int_strict(stock_input, &new_drug->stock))
+        {
+            printf("输入有误，请重新输入正确库存！\n");
+            continue;
+        }
+        break;
     }
 
-    printf("请输入药品适用科室(直接回车默认为'通用', 输入0取消): ");
-    safe_input(new_drug->department, sizeof(new_drug->department));
-    if (strcmp(new_drug->department, "0") == 0)
+    char department_input[MAX_NAME_LEN];
+    print_department_hint();
+    while (1)
     {
-        free(new_drug);
-        free_drugs(head);
-        return;
+        printf("请输入药品适用科室(回车 = '通用' | 输入0返回): ");
+        safe_input(department_input, sizeof(department_input));
+        if (strcmp(department_input, "0") == 0)
+        {
+            free(new_drug);
+            free_drugs(head);
+            return;
+        }
+        if (department_input[0] == '\0')
+        {
+            strcpy(new_drug->department, "通用");
+            break;
+        }
+        if (is_all_chinese_utf8(department_input) == 0)
+        {
+            printf("科室名称只能包含汉字！\n");
+            continue;
+        }
+        if (!is_valid_department(department_input))
+        {
+            printf("输入的科室无效！请重新输入。\n");
+            continue;
+        }
+        strncpy(new_drug->department, department_input, sizeof(new_drug->department) - 1);
+        break;
     }
-    if (new_drug->department[0] == '\0')
-        strcpy(new_drug->department, "通用");
 
     new_drug->next = NULL;
     if (!head)
@@ -799,6 +865,13 @@ void delete_drug()
     safe_input(id, sizeof(id));
     if (strcmp(id, "0") == 0)
     {
+        clear_screen();
+        return;
+    }
+    if (id[0] == '\0')
+    {
+        printf("药品ID不能为空！\n");
+        wait_enter();
         clear_screen();
         return;
     }
@@ -938,6 +1011,13 @@ void update_drug()
         clear_screen();
         return;
     }
+    if (id[0] == '\0')
+    {
+        printf("药品ID不能为空！\n");
+        wait_enter();
+        clear_screen();
+        return;
+    }
 
     Drug *head = load_drugs_from_file();
     Drug *drug = find_drug_by_id(head, id);
@@ -987,81 +1067,134 @@ void update_drug()
         switch (select)
         {
         case 1:
-            printf("请输入新的通用名(输入0取消): ");
-            safe_input(buf, sizeof(buf));
-            if (strcmp(buf, "0") != 0 && strlen(buf) > 0)
+            while (1)
             {
+                printf("请输入新的通用名(汉字 | 输入0取消): ");
+                safe_input(buf, sizeof(buf));
+                if (strcmp(buf, "0") == 0)
+                    break;
+                if (buf[0] == '\0')
+                {
+                    printf("通用名不能为空！\n");
+                    continue;
+                }
+                if (!is_all_chinese_utf8(buf))
+                {
+                    printf("通用名只能包含汉字！\n");
+                    continue;
+                }
                 strncpy(drug->generic_name, buf, sizeof(drug->generic_name) - 1);
                 drug->generic_name[sizeof(drug->generic_name) - 1] = '\0';
                 if (save_drugs_to_file(head) != 0)
                     printf("保存药品信息失败！\n");
                 else
                     printf("更新成功！\n");
+                wait_enter();
+                break;
             }
             break;
         case 2:
-            printf("请输入新的商品名(输入0取消): ");
-            safe_input(buf, sizeof(buf));
-            if (strcmp(buf, "0") != 0 && strlen(buf) > 0)
+            while (1)
             {
+                printf("请输入新的商品名(汉字 | 输入0取消): ");
+                safe_input(buf, sizeof(buf));
+                if (strcmp(buf, "0") == 0)
+                    break;
+                if (buf[0] == '\0')
+                {
+                    printf("商品名不能为空！\n");
+                    continue;
+                }
+                if (!is_all_chinese_utf8(buf))
+                {
+                    printf("商品名只能包含汉字！\n");
+                    continue;
+                }
                 strncpy(drug->trade_name, buf, sizeof(drug->trade_name) - 1);
                 drug->trade_name[sizeof(drug->trade_name) - 1] = '\0';
                 if (save_drugs_to_file(head) != 0)
                     printf("保存药品信息失败！\n");
                 else
                     printf("更新成功！\n");
+                wait_enter();
+                break;
             }
             break;
         case 3:
-            printf("请输入新的别名(输入0取消): ");
-            safe_input(buf, sizeof(buf));
-            if (strcmp(buf, "0") != 0 && strlen(buf) > 0)
+            while (1)
             {
+                printf("请输入新的别名(汉字 | 输入0取消): ");
+                safe_input(buf, sizeof(buf));
+                if (strcmp(buf, "0") == 0)
+                    break;
+                if (buf[0] == '\0')
+                {
+                    printf("别名不能为空！\n");
+                    continue;
+                }
+                if (!is_all_chinese_utf8(buf) && strcmp(buf, "无") != 0)
+                {
+                    printf("别名只能包含汉字！\n");
+                    continue;
+                }
                 strncpy(drug->alias, buf, sizeof(drug->alias) - 1);
                 drug->alias[sizeof(drug->alias) - 1] = '\0';
                 if (save_drugs_to_file(head) != 0)
                     printf("保存药品信息失败！\n");
                 else
                     printf("更新成功！\n");
+                wait_enter();
+                break;
             }
             break;
         case 4:
-            printf("请输入新的价格(输入q取消): ");
-            safe_input(buf, sizeof(buf));
-            if (strcmp(buf, "q") != 0 && strcmp(buf, "Q") != 0)
+            while (1)
             {
-                float p;
-                if (parse_nonnegative_float_strict(buf, &p))
-                {
-                    drug->price = p;
-                    if (save_drugs_to_file(head) != 0)
-                        printf("保存药品信息失败！\n");
-                    else
-                        printf("更新成功！\n");
-                }
-                else
+                printf("请输入新的价格(输入q取消): ");
+                safe_input(buf, sizeof(buf));
+                if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+                    break;
+
+                char *endptr;
+                errno = 0;
+                double p_d = strtod(buf, &endptr);
+                if (endptr == buf || *endptr != '\0' || p_d < 0)
                 {
                     printf("输入有误，请输入非负数字价格！\n");
+                    continue;
                 }
+                if (p_d > MAX_DRUG_PRICE)
+                {
+                    printf("价格超出上限 %.2f，请重新输入！\n", MAX_DRUG_PRICE);
+                    continue;
+                }
+                drug->price = (float)p_d;
+                if (save_drugs_to_file(head) != 0)
+                    printf("保存药品信息失败！\n");
+                else
+                    printf("更新成功！\n");
+                wait_enter();
+                break;
             }
             break;
         case 5:
-            printf("请输入新的总库存(输入q取消): ");
-            safe_input(buf, sizeof(buf));
-            if (strcmp(buf, "q") != 0 && strcmp(buf, "Q") != 0)
+            while (1)
             {
+                printf("请输入新的总库存(输入q取消): ");
+                safe_input(buf, sizeof(buf));
+                if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+                    break;
                 int s;
                 if (!parse_nonnegative_int_strict(buf, &s))
                 {
                     printf("输入有误，请输入非负整数库存！\n");
-                    break;
+                    continue;
                 }
 
                 PharmacyDrug *pd_head = load_pharmacy_drugs_from_file();
-                int pd_count = 0;               // 该药关联药房数量
-                long long pd_total = 0;         // 各药房库存合计
-                PharmacyDrug *single_pd = NULL; // 单药房场景可直接同步该节点库存
-
+                int pd_count = 0;
+                long long pd_total = 0;
+                PharmacyDrug *single_pd = NULL;
                 for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
                 {
                     if (strcmp(pd->drug_id, drug->id) == 0)
@@ -1078,10 +1211,11 @@ void update_drug()
                     printf("该药品分布在多个药房，不能直接覆盖为新总库存。\n");
                     printf("请通过入库/发药调整；当前各药房合计库存为: %lld\n", pd_total);
                     free_pharmacy_drugs(pd_head);
+                    wait_enter();
                     break;
                 }
 
-                int old_stock = drug->stock; // 变更前快照，用于保存失败时恢复
+                int old_stock = drug->stock;
                 int old_single_qty = 0;
                 if (pd_count == 1 && single_pd)
                 {
@@ -1107,40 +1241,57 @@ void update_drug()
                     drug->stock = old_stock;
                     if (pd_count == 1 && single_pd)
                         single_pd->quantity = old_single_qty;
-
-                    /* 恢复内存后，再把回滚结果写回文件 */
                     int rb1 = (save_drugs_to_file(head) == 0);
                     int rb2 = 1;
                     if (pd_count == 1)
                         rb2 = (save_pharmacy_drugs_to_file(pd_head) == 0);
-
                     printf("更新失败：保存文件失败。");
                     if (rb1 && rb2)
                         printf("已回滚。\n");
                     else
                         printf("且回滚失败，请立即检查数据文件。\n");
                 }
-
                 free_pharmacy_drugs(pd_head);
+                wait_enter();
+                break;
             }
             break;
         case 6:
-            printf("请输入新的适用科室(直接回车默认为通用, 输入0取消): ");
-            safe_input(buf, sizeof(buf));
-            if (strcmp(buf, "0") != 0)
+            print_department_hint();
+            while (1)
             {
+                printf("请输入新的适用科室(回车 = '通用' | 输入0取消): ");
+                safe_input(buf, sizeof(buf));
+                if (strcmp(buf, "0") == 0)
+                    break;
                 if (buf[0] == '\0')
+                {
                     strcpy(buf, "通用");
+                }
+                else
+                {
+                    if (!is_all_chinese_utf8(buf))
+                    {
+                        printf("科室名称只能包含汉字！\n");
+                        continue;
+                    }
+                    if (!is_valid_department(buf))
+                    {
+                        printf("输入的科室无效！请重新输入。\n");
+                        continue;
+                    }
+                }
                 strncpy(drug->department, buf, sizeof(drug->department) - 1);
                 drug->department[sizeof(drug->department) - 1] = '\0';
                 if (save_drugs_to_file(head) != 0)
                     printf("保存药品信息失败！\n");
                 else
                     printf("更新成功！\n");
+                wait_enter();
+                break;
             }
             break;
         }
-        wait_enter();
     }
     free_drugs(head);
     clear_screen();
@@ -1182,40 +1333,67 @@ void query_drug()
             break;
 
         char query[MAX_NAME_LEN];
-        printf("请输入查询关键字(输入0返回): ");
-        safe_input(query, sizeof(query));
-        if (strcmp(query, "0") == 0)
-            continue;
+        if (select == 3)
+        {
+            print_department_hint();
+            printf("请输入科室名称(回车 = '通用' | 输入0返回): ");
+            safe_input(query, sizeof(query));
+            if (strcmp(query, "0") == 0)
+                continue;
+            if (query[0] == '\0')
+                strcpy(query, "通用");
+        }
+        else
+        {
+            printf("请输入查询关键字(输入0返回): ");
+            safe_input(query, sizeof(query));
+            if (strcmp(query, "0") == 0)
+                continue;
+            if (query[0] == '\0')
+            {
+                printf("关键字不能为空！\n");
+                wait_enter();
+                continue;
+            }
+        }
 
         int id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w;
         calc_drug_width(head, &id_w, &gn_w, &tn_w, &al_w, &pr_w, &st_w, &dept_w);
 
+        /* 先统计 */
         int found = 0;
-        print_drug_header(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
-
         for (Drug *cur = head; cur; cur = cur->next)
         {
             if (select == 1 && strstr(cur->id, query) != NULL)
-            {
-                print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
                 found = 1;
-            }
             else if (select == 2 &&
                      (strstr(cur->generic_name, query) || strstr(cur->trade_name, query) || strstr(cur->alias, query)))
-            {
-                print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
                 found = 1;
-            }
             else if (select == 3 && strstr(cur->department, query) != NULL)
-            {
-                print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
                 found = 1;
-            }
+            if (found)
+                break; /* 找到一个就够了 */
         }
-        print_drug_line(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
 
         if (!found)
+        {
             printf("未找到匹配的药品。\n");
+        }
+        else
+        {
+            print_drug_header(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+            for (Drug *cur = head; cur; cur = cur->next)
+            {
+                if (select == 1 && strstr(cur->id, query) != NULL)
+                    print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+                else if (select == 2 && (strstr(cur->generic_name, query) || strstr(cur->trade_name, query) ||
+                                         strstr(cur->alias, query)))
+                    print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+                else if (select == 3 && strstr(cur->department, query) != NULL)
+                    print_drug(cur, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+            }
+            print_drug_line(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+        }
         wait_enter();
     }
     free_drugs(head);
@@ -1302,7 +1480,7 @@ void add_pharmacy()
 
     while (1)
     {
-        printf("请输入药房名称(输入0返回): ");
+        printf("请输入药房名称(汉字 | 输入0返回): ");
         safe_input(new_node->name, sizeof(new_node->name));
         if (strcmp(new_node->name, "0") == 0)
         {
@@ -1315,12 +1493,17 @@ void add_pharmacy()
             printf("药房名称不能为空！\n");
             continue;
         }
+        if (!is_all_chinese_utf8(new_node->name))
+        {
+            printf("药房名称只能包含汉字！\n");
+            continue;
+        }
         break;
     }
 
     while (1)
     {
-        printf("请输入药房位置(输入0返回): ");
+        printf("请输入药房位置(汉字 | 输入0返回): ");
         safe_input(new_node->location, sizeof(new_node->location));
         if (strcmp(new_node->location, "0") == 0)
         {
@@ -1331,6 +1514,11 @@ void add_pharmacy()
         if (new_node->location[0] == '\0')
         {
             printf("位置不能为空！\n");
+            continue;
+        }
+        if (!is_all_chinese_utf8(new_node->location))
+        {
+            printf("位置只能包含汉字！\n");
             continue;
         }
         break;
@@ -1369,6 +1557,13 @@ void delete_pharmacy()
     safe_input(id, sizeof(id));
     if (strcmp(id, "0") == 0)
     {
+        clear_screen();
+        return;
+    }
+    if (id[0] == '\0')
+    {
+        printf("药房ID不能为空！\n");
+        wait_enter();
         clear_screen();
         return;
     }
@@ -1516,24 +1711,43 @@ void query_pharmacy()
         clear_screen();
         return;
     }
+    if (query[0] == '\0')
+    {
+        printf("关键字不能为空！\n");
+        free_pharmacies(head);
+        wait_enter();
+        clear_screen();
+        return;
+    }
 
     int id_w, nm_w, loc_w;
     calc_pharmacy_width(head, &id_w, &nm_w, &loc_w);
-    int found = 0;
 
-    print_pharmacy_header(id_w, nm_w, loc_w);
+    /* 先统计 */
+    int found = 0;
     for (Pharmacy *cur = head; cur; cur = cur->next)
     {
         if (strstr(cur->id, query) != NULL || strstr(cur->name, query) != NULL)
         {
-            print_pharmacy(cur, id_w, nm_w, loc_w);
             found = 1;
+            break;
         }
     }
-    print_pharmacy_line(id_w, nm_w, loc_w);
 
     if (!found)
+    {
         printf("未找到匹配的药房。\n");
+    }
+    else
+    {
+        print_pharmacy_header(id_w, nm_w, loc_w);
+        for (Pharmacy *cur = head; cur; cur = cur->next)
+        {
+            if (strstr(cur->id, query) != NULL || strstr(cur->name, query) != NULL)
+                print_pharmacy(cur, id_w, nm_w, loc_w);
+        }
+        print_pharmacy_line(id_w, nm_w, loc_w);
+    }
     free_pharmacies(head);
     wait_enter();
     clear_screen();
@@ -1629,10 +1843,17 @@ void stock_in_pharmacy()
 
     char p_id[MAX_ID_LEN], d_id[MAX_ID_LEN], qty_str[32];
 
+    print_pharmacy_hint();
     printf("请输入目标药房ID(输入0返回): ");
     safe_input(p_id, sizeof(p_id));
     if (strcmp(p_id, "0") == 0)
         goto cleanup;
+    if (p_id[0] == '\0')
+    {
+        printf("药房ID不能为空！\n");
+        wait_enter();
+        goto cleanup;
+    }
 
     Pharmacy *target_p = find_pharmacy_by_id(p_head, p_id);
     if (!target_p)
@@ -1646,6 +1867,12 @@ void stock_in_pharmacy()
     safe_input(d_id, sizeof(d_id));
     if (strcmp(d_id, "0") == 0)
         goto cleanup;
+    if (d_id[0] == '\0')
+    {
+        printf("药品ID不能为空！\n");
+        wait_enter();
+        goto cleanup;
+    }
 
     Drug *target_d = find_drug_by_id(d_head, d_id);
     if (!target_d)
@@ -1824,19 +2051,13 @@ void dispense_prescription_drug()
     calc_prescription_width(pr_head, patient_head, doc_head, d_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
                             &freq_w);
 
+    /* 先统计 */
     int pr_count = 0;
-    print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-
     for (Prescription *c = pr_head; c; c = c->next)
     {
-        /* 核心过滤：只显示自己的处方 */
         if (strcmp(c->d_id, g_session.user_id) == 0)
-        {
-            print_prescription(c, patient_head, doc_head, d_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
             pr_count++;
-        }
     }
-    print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
 
     if (pr_count == 0)
     {
@@ -1844,6 +2065,14 @@ void dispense_prescription_drug()
         wait_enter();
         goto cleanup;
     }
+
+    print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+    for (Prescription *c = pr_head; c; c = c->next)
+    {
+        if (strcmp(c->d_id, g_session.user_id) == 0)
+            print_prescription(c, patient_head, doc_head, d_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+    }
+    print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
 
     /* 3. 输入待履行的处方ID */
     char pr_id[MAX_ID_LEN];
@@ -1886,7 +2115,7 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    /* 5. 科室权限校验拦截 (保留原有逻辑) */
+    /* 5. 科室权限校验拦截 */
     if (strcmp(target_drug->department, "通用") != 0 && strcmp(target_drug->department, my_dept) != 0)
     {
         printf("\n【拦截告警】发药拒绝！\n");
@@ -1919,6 +2148,7 @@ void dispense_prescription_drug()
 
     /* 6. 执行出库扣减 */
     char phy_id[MAX_ID_LEN];
+    print_pharmacy_hint();
     printf("\n请指定扣减库存的出库药房ID(输入0取消): ");
     safe_input(phy_id, sizeof(phy_id));
     if (strcmp(phy_id, "0") == 0 || phy_id[0] == '\0')
@@ -2026,10 +2256,17 @@ void show_pharmacy_drugs()
     }
 
     char p_id[MAX_ID_LEN];
+    print_pharmacy_hint();
     printf("请输入目标药房ID(输入0返回): ");
     safe_input(p_id, sizeof(p_id));
     if (strcmp(p_id, "0") == 0)
         goto cleanup;
+    if (p_id[0] == '\0')
+    {
+        printf("药房ID不能为空！\n");
+        wait_enter();
+        goto cleanup;
+    }
 
     Pharmacy *target_p = find_pharmacy_by_id(p_head, p_id);
     if (!target_p)
@@ -2044,27 +2281,40 @@ void show_pharmacy_drugs()
 
     clear_screen();
     printf("===== [%s - %s] 库存明细列表 =====\n", target_p->id, target_p->name);
-    print_drug_header(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
 
+    /* 先统计 */
     int found = 0;
     for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
     {
         if (strcmp(pd->pharmacy_id, p_id) == 0 && pd->quantity > 0)
         {
-            Drug *drug = find_drug_by_id(d_head, pd->drug_id);
-            if (drug)
-            {
-                Drug temp = *drug;
-                temp.stock = pd->quantity; // 使用药房关联表中的剩余量展示
-                print_drug(&temp, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
-                found = 1;
-            }
+            found = 1;
+            break;
         }
     }
-    print_drug_line(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
 
     if (!found)
+    {
         printf("该药房内暂无任何有库存的药品！\n");
+    }
+    else
+    {
+        print_drug_header(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+        for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
+        {
+            if (strcmp(pd->pharmacy_id, p_id) == 0 && pd->quantity > 0)
+            {
+                Drug *drug = find_drug_by_id(d_head, pd->drug_id);
+                if (drug)
+                {
+                    Drug temp = *drug;
+                    temp.stock = pd->quantity;
+                    print_drug(&temp, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+                }
+            }
+        }
+        print_drug_line(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+    }
     wait_enter();
 
 cleanup:

@@ -6,6 +6,8 @@
 
 #include "core/structs.h"
 
+#define MAX_DRUG_PRICE 99999.99f // 药品价格上限
+
 /*
  * 药品基础操作
  */
@@ -21,6 +23,7 @@ void print_drug_header(int id_w, int gn_w, int tn_w, int al_w, int pr_w, int st_
 void print_drug(Drug *d, int id_w, int gn_w, int tn_w, int al_w, int pr_w, int st_w, int dept_w); // 打印药品信息行
 int count_drugs(Drug *head);                                                                      // 统计药品数量
 Drug *get_nth_drug(Drug *head, int n);                                                            // 获取第n个药品节点
+void print_drug_selection_hint();                                                                 // 打印药品选择提示
 
 /*
  * 药房基础操作
