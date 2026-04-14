@@ -22,6 +22,7 @@ void add_department();          // 添加科室
 void delete_department();       // 删除科室
 void show_department_doctors(); // 显示科室医生
 void show_all_departments();    // 显示所有科室
-void print_department_hint();   // 显示所有科室可选项
+void print_all_departments();   // 打印所有科室
+void print_department_hint();   // 打印所有科室可选项
 
 #endif

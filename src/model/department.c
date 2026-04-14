@@ -125,7 +125,10 @@ void add_department()
 
     while (1)
     {
-        printf("请输入要添加的科室名称(输入0返回): ");
+        clear_screen();
+        print_all_departments();
+
+        printf("\n请输入要添加的科室名称(输入0返回): ");
         safe_input(name, sizeof(name));
 
         if (strcmp(name, "0") == 0)
@@ -137,6 +140,14 @@ void add_department()
         if (name[0] == '\0')
         {
             printf("输入错误！科室名称不能为空，请重新输入。\n");
+            wait_enter();
+            continue;
+        }
+
+        if (!is_all_chinese_utf8(name))
+        {
+            printf("输入错误！科室名称只能包含汉字，请重新输入。\n");
+            wait_enter();
             continue;
         }
 
@@ -146,6 +157,7 @@ void add_department()
         {
             printf("输入错误！科室已存在，请重新输入。\n");
             free_departments(dept_head);
+            wait_enter();
             continue;
         }
 
@@ -197,165 +209,230 @@ void add_department()
 void delete_department()
 {
     char name[MAX_NAME_LEN];
-    printf("请输入要删除的科室名称(输入0返回): ");
-    safe_input(name, sizeof(name));
-    if (strcmp(name, "0") == 0)
+
+    while (1)
     {
         clear_screen();
-        return;
-    }
+        print_all_departments();
 
-    Department *dept_head = load_departments_from_file();
-    if (!dept_head)
-    {
-        printf("没有科室数据！\n");
-        wait_enter();
-        clear_screen();
-        return;
-    }
+        printf("\n请输入要删除的科室名称(输入0返回): ");
+        safe_input(name, sizeof(name));
 
-    Department *current = dept_head, *prev = NULL;
-    while (current)
-    {
-        if (strcmp(current->name, name) == 0)
+        if (strcmp(name, "0") == 0)
         {
-            printf("找到科室: %s，确定要删除吗？(y/n): ", current->name);
-            char confirm[MAX_INPUT_LEN];
-            safe_input(confirm, sizeof(confirm));
-            if (strcmp(confirm, "n") == 0 || strcmp(confirm, "N") == 0) // 用户输入n/N取消删除
+            clear_screen();
+            return;
+        }
+        if (name[0] == '\0')
+        {
+            printf("输入错误！科室名称不能为空。\n");
+            wait_enter();
+            continue;
+        }
+        if (!is_all_chinese_utf8(name))
+        {
+            printf("输入错误！科室名称只能包含汉字。\n");
+            wait_enter();
+            continue;
+        }
+
+        Department *dept_head = load_departments_from_file();
+        if (!dept_head)
+        {
+            printf("没有科室数据！\n");
+            wait_enter();
+            continue;
+        }
+
+        Department *current = dept_head, *prev = NULL;
+        int found = 0; // 是否找到目标科室
+        while (current)
+        {
+            if (strcmp(current->name, name) == 0)
             {
-                printf("已取消删除。\n");
-                free_departments(dept_head);
-                wait_enter();
-                clear_screen();
-                return;
-            }
-            else if (strcmp(confirm, "y") != 0 &&
-                     strcmp(confirm, "Y") != 0) // 用户输入非y/Y/n/N的其他内容，视为无效输入并取消删除
-            {
-                printf("输入无效，已取消删除。\n");
-                free_departments(dept_head);
-                wait_enter();
-                clear_screen();
-                return;
-            }
-            else // 用户输入y/Y确认删除
-            {
-                /* 检查是否有医生属于该科室 */
-                Doctor *doc_head = load_doctors_from_file();
-                int has_doctor = 0;
-                for (Doctor *doc = doc_head; doc; doc = doc->next)
+                found = 1; // 找到目标科室
+                printf("找到科室: %s，确定要删除吗？(y/n): ", current->name);
+                char confirm[MAX_INPUT_LEN];
+                safe_input(confirm, sizeof(confirm));
+
+                if (strcmp(confirm, "n") == 0 || strcmp(confirm, "N") == 0)
                 {
-                    if (strcmp(doc->department, name) == 0)
-                    {
-                        has_doctor = 1;
-                        break;
-                    }
-                }
-                if (has_doctor)
-                {
-                    printf("无法删除！该科室下仍有关联的医生记录，请先处理相关医生。\n");
-                    free_doctors(doc_head);
+                    printf("已取消删除。\n");
                     free_departments(dept_head);
                     wait_enter();
-                    clear_screen();
-                    return;
+                    break; // 退出当前循环，回到删除界面
                 }
-                free_doctors(doc_head);
-
-                if (prev)
-                    prev->next = current->next;
+                else if (strcmp(confirm, "y") != 0 && strcmp(confirm, "Y") != 0)
+                {
+                    printf("输入无效，已取消删除。\n");
+                    free_departments(dept_head);
+                    wait_enter();
+                    break; // 退出当前循环，回到删除界面
+                }
                 else
-                    dept_head = current->next;
+                {
+                    Doctor *doc_head = load_doctors_from_file();
+                    int has_doctor = 0;
+                    for (Doctor *doc = doc_head; doc; doc = doc->next)
+                    {
+                        if (strcmp(doc->department, name) == 0) // 检查是否有医生挂靠在该科室
+                        {
+                            has_doctor = 1;
+                            break;
+                        }
+                    }
+                    if (has_doctor) // 如果有医生挂靠在该科室，拒绝删除并提示先处理相关医生
+                    {
+                        printf("无法删除！该科室下仍有关联的医生记录，请先处理相关医生。\n");
+                        free_doctors(doc_head);
+                        free_departments(dept_head);
+                        wait_enter();
+                        break; // 退出当前循环，回到删除界面
+                    }
+                    free_doctors(doc_head);
 
-                free(current);
+                    if (prev)
+                        prev->next = current->next;
+                    else
+                        dept_head = current->next;
+                    free(current);
 
-                if (save_departments_to_file(dept_head) != 0)
-                    printf("保存科室信息失败！\n");
-                else
-                    printf("删除成功！\n");
+                    if (save_departments_to_file(dept_head) != 0)
+                        printf("保存科室信息失败！\n");
+                    else
+                        printf("删除成功！\n");
 
-                free_departments(dept_head);
-                wait_enter();
-                clear_screen();
-                return;
+                    free_departments(dept_head);
+                    wait_enter();
+                    break;
+                }
             }
+            prev = current;
+            current = current->next;
         }
-        prev = current;
-        current = current->next;
+
+        if (!found) // 遍历结束都没有找到目标科室
+        {
+            printf("未找到指定名称的科室！\n");
+            free_departments(dept_head);
+            wait_enter();
+        }
     }
-    printf("未找到指定名称的科室！\n");
-    free_departments(dept_head);
-    wait_enter();
-    clear_screen();
 }
 
 /* 显示科室医生 */
 void show_department_doctors()
 {
     char name[MAX_NAME_LEN];
-    print_department_hint();
-    printf("请输入科室名称(输入0返回): ");
-    safe_input(name, sizeof(name));
-    if (strcmp(name, "0") == 0)
+
+    while (1)
     {
         clear_screen();
-        return;
-    }
+        print_all_departments();
 
-    Department *dept_head = load_departments_from_file();
-    if (!dept_head)
-    {
-        printf("没有科室数据！\n");
-        wait_enter();
-        clear_screen();
-        return;
-    }
-
-    Department *current = dept_head;
-    while (current)
-    {
-        if (strcmp(current->name, name) == 0)
+        printf("\n请选择要显示医生的科室名称(输入0返回): ");
+        safe_input(name, sizeof(name));
+        if (strcmp(name, "0") == 0)
         {
-            printf("科室: %s\n", current->name);
+            clear_screen();
+            return;
+        }
+        if (name[0] == '\0')
+        {
+            printf("输入错误！科室名称不能为空，请重新输入。\n");
+            wait_enter();
+            continue;
+        }
+        if (!is_all_chinese_utf8(name))
+        {
+            printf("输入错误！科室名称只能包含汉字，请重新输入。\n");
+            wait_enter();
+            continue;
+        }
+
+        Department *dept_head = load_departments_from_file();
+        if (!dept_head)
+        {
+            printf("没有科室数据！\n");
+            wait_enter();
+            clear_screen();
+            return;
+        }
+
+        int deptfound = 0;
+        for (Department *dept_current = dept_head; dept_current; dept_current = dept_current->next)
+        {
+            if (strcmp(dept_current->name, name) != 0)
+                continue;
+
+            deptfound = 1;
+            printf("科室: %s\n", dept_current->name);
+
             Doctor *doctor_head = load_doctors_from_file();
             if (!doctor_head)
             {
                 printf("没有医生数据！\n");
-                free_departments(dept_head);
-                wait_enter();
-                clear_screen();
-                return;
+                break;
             }
-            int id_w, name_w, gen_w, dept_w;
-            calc_doctor_width(doctor_head, &id_w, &name_w, &gen_w, &dept_w);
-            print_doctor_header(id_w, name_w, gen_w, dept_w);
-            Doctor *doc_current = doctor_head;
-            int found = 0;
-            while (doc_current)
+
+            /* 先统计该科室是否有医生 */
+            int docfound = 0;
+            for (Doctor *doc = doctor_head; doc; doc = doc->next)
             {
-                if (strcmp(doc_current->department, current->name) == 0)
+                if (strcmp(doc->department, dept_current->name) == 0)
                 {
-                    print_doctor(doc_current, id_w, name_w, gen_w, dept_w);
-                    found = 1;
+                    docfound = 1;
+                    break;
                 }
-                doc_current = doc_current->next;
             }
-            if (!found)
-                printf("该科室暂无医生！\n");
-            print_doctor_line(id_w, name_w, gen_w, dept_w);
+
+            if (!docfound)
+            {
+                printf("该科室暂无医生！\n"); // 如果该科室没有医生，直接提示并跳过打印表格
+            }
+            else
+            {
+                int id_w, name_w, gen_w, dept_w;
+                calc_doctor_width(doctor_head, &id_w, &name_w, &gen_w, &dept_w);
+                print_doctor_header(id_w, name_w, gen_w, dept_w);
+
+                for (Doctor *doc = doctor_head; doc; doc = doc->next)
+                {
+                    if (strcmp(doc->department, dept_current->name) == 0)
+                        print_doctor(doc, id_w, name_w, gen_w, dept_w);
+                }
+
+                print_doctor_line(id_w, name_w, gen_w, dept_w);
+            }
+
             free_doctors(doctor_head);
             break;
         }
-        current = current->next;
+
+        if (!deptfound) // 遍历结束都没有找到目标科室
+            printf("未找到指定名称的科室！\n");
+
+        free_departments(dept_head);
+        wait_enter();
+        clear_screen();
     }
-    free_departments(dept_head);
-    wait_enter();
-    clear_screen();
 }
 
 /* 显示所有科室 */
 void show_all_departments()
+{
+    while (1)
+    {
+        clear_screen();
+        print_all_departments();
+        wait_enter();
+        clear_screen();
+        return;
+    }
+}
+
+/* 打印所有科室 */
+void print_all_departments()
 {
     Department *dept_head = load_departments_from_file();
     if (!dept_head)
@@ -374,19 +451,18 @@ void show_all_departments()
         current = current->next;
     }
     free_departments(dept_head);
-    wait_enter();
-    clear_screen();
 }
 
-/* 显示所有科室可选项 */
+/* 打印所有科室可选项 */
 void print_department_hint()
 {
     Department *dept_head = load_departments_from_file();
     if (!dept_head)
     {
-        printf("没有科室数据！\n");
+        printf("暂无科室数据\n");
         return;
     }
+
     printf("可选科室: ");
     Department *current = dept_head;
     while (current)
