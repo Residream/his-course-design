@@ -6,7 +6,7 @@
 #include "core/utils.h"
 #include "model/patient.h"
 
-/* 单个十六进制字符串转十六进制 */
+/* 单个十六进制字符串转整数 */
 static int hex_char_to_val(char c)
 {
     if (c >= '0' && c <= '9')
@@ -21,17 +21,19 @@ static int hex_char_to_val(char c)
 /* 十六进制字符串转字节数组 */
 static int hex_to_bytes(const char *hex, unsigned char *out, int out_len)
 {
-    int n = (int)strlen(hex);
+    int n = (int)strlen(hex); // 输入十六进制字符串长度必须是输出字节数组长度的两倍
     if (n != out_len * 2)
         return 0;
 
-    for (int i = 0; i < out_len; i++)
+    for (int i = 0; i < out_len; i++) // 每两个十六进制字符转换成一个字节
     {
-        int hi = hex_char_to_val(hex[i * 2]);
-        int lo = hex_char_to_val(hex[i * 2 + 1]);
-        if (hi < 0 || lo < 0)
+        int hi = hex_char_to_val(hex[i * 2]);     // 高4位，即第一个十六进制字符
+        int lo = hex_char_to_val(hex[i * 2 + 1]); // 低4位，即第二个十六进制字符
+
+        if (hi < 0 || lo < 0) // 如果遇到非十六进制字符，转换失败
             return 0;
-        out[i] = (unsigned char)((hi << 4) | lo);
+
+        out[i] = (unsigned char)((hi << 4) | lo); // 将高4位和低4位合成一个字节
     }
     return 1;
 }
@@ -39,33 +41,40 @@ static int hex_to_bytes(const char *hex, unsigned char *out, int out_len)
 /* 校验输入密码是否与存储的 hash/salt 匹配 */
 int verify_password(const char *input_password, const char *stored_salt_hex, const char *stored_hash_hex)
 {
-    if (!input_password || !stored_salt_hex || !stored_hash_hex)
+    if (!input_password || !stored_salt_hex || !stored_hash_hex) // 输入参数不能为空
         return 0;
 
-    unsigned char salt[SALT_RAW_LEN];
-    if (!hex_to_bytes(stored_salt_hex, salt, SALT_RAW_LEN))
+    unsigned char salt[SALT_RAW_LEN]; // 存储盐的原始字节数组
+
+    if (!hex_to_bytes(stored_salt_hex, salt, SALT_RAW_LEN)) // 将存储的十六进制盐转换成字节数组，如果失败则返回验证失败
         return 0;
 
-    char computed_hash[MAX_PWD_HASH];
-    build_pass_hash(salt, input_password, computed_hash);
+    char computed_hash[MAX_PWD_HASH]; // 存储计算得到的密码哈希值的十六进制字符串
 
-    return strcmp(computed_hash, stored_hash_hex) == 0;
+    build_pass_hash(salt, input_password, computed_hash); // 对输入密码加盐后计算哈希值，并转换成十六进制字符串
+
+    return strcmp(computed_hash, stored_hash_hex) == 0; // 如果计算得到的哈希值与存储的哈希值匹配，则返回1；否则返回0
 }
 
 /* 对输入password加盐后加密 */
 void build_pass_hash(const unsigned char salt[SALT_RAW_LEN], const char *password, char out_hex[65])
 {
-    uint8_t buf[SALT_RAW_LEN + MAX_INPUT_LEN];
-    size_t pass_len = strlen(password);
-    if (pass_len > MAX_INPUT_LEN)
+    uint8_t buf[SALT_RAW_LEN + MAX_INPUT_LEN]; // 存储盐和密码组合的字节数组，长度为盐的长度加上密码的最大长度
+
+    size_t pass_len = strlen(password); // 计算输入密码的长度，如果超过最大输入长度，则截断到最大输入长度
+
+    if (pass_len > MAX_INPUT_LEN) // 如果输入密码长度超过最大限制，截断到最大长度
         pass_len = MAX_INPUT_LEN;
 
-    memcpy(buf, salt, SALT_RAW_LEN);
-    memcpy(buf + SALT_RAW_LEN, password, pass_len);
+    memcpy(buf, salt, SALT_RAW_LEN);                // 将盐复制到缓冲区的前面
+    memcpy(buf + SALT_RAW_LEN, password, pass_len); // 将密码复制到缓冲区的后面，形成盐+密码的组合
 
-    uint8_t hash[32];
-    sha256(buf, SALT_RAW_LEN + pass_len, hash);
-    sha256_to_hex(hash, out_hex);
+    uint8_t hash[32]; // 存储计算得到的SHA256哈希值，长度为32字节
+
+    sha256(buf, SALT_RAW_LEN + pass_len, hash); // 对盐和密码的组合进行SHA256哈希计算，结果存储在hash数组中
+
+    sha256_to_hex(hash,
+                  out_hex); // 将计算得到的哈希值转换成十六进制字符串，存储在out_hex中，长度为64字符加上字符串结束符
 }
 
 /* 管理员登录验证 */
@@ -82,20 +91,23 @@ int admin_login_by_file(const char *file, const char *name, const char *password
         if (!line[0])
             continue;
 
-        char *token = strtok(line, "|"); // 读取name
+        /* 读取name */
+        char *token = strtok(line, "|");
         if (!token)
             continue;
         if (strcmp(token, name) != 0) // 如果name不匹配，继续下一行
             continue;
 
-        token = strtok(NULL, "|"); // 读取pwd_hash
+        /* 读取pwd_hash */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
         char stored_hash[MAX_PWD_HASH];
         strncpy(stored_hash, token, sizeof(stored_hash) - 1);
         stored_hash[sizeof(stored_hash) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取salt
+        /* 读取salt */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
         char stored_salt[SALT_HEX_LEN];
@@ -124,30 +136,36 @@ int patient_login_by_file(const char *file, const char *id, const char *password
         if (!line[0])
             continue;
 
-        char *token = strtok(line, "|"); // 读取id
+        /* 读取id */
+        char *token = strtok(line, "|");
         if (!token)
             continue;
-        if (strcmp(token, id) != 0) // 如果id不匹配，继续下一行
+        if (strcmp(token, id) != 0) // 寻找匹配的患者ID，如果不匹配，继续下一行
             continue;
 
-        token = strtok(NULL, "|"); // 跳过name
+        /* 跳过name */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
-        token = strtok(NULL, "|"); // 跳过gender
+        /* 跳过gender */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
-        token = strtok(NULL, "|"); // 跳过age
+        /* 跳过age */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
 
-        token = strtok(NULL, "|"); // 读取pwd_hash
+        /* 读取pwd_hash */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
         char stored_hash[MAX_PWD_HASH];
         strncpy(stored_hash, token, sizeof(stored_hash) - 1);
         stored_hash[sizeof(stored_hash) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取salt
+        /* 读取salt */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
         char stored_salt[SALT_HEX_LEN];
@@ -176,30 +194,36 @@ int doctor_login_by_file(const char *file, const char *id, const char *password)
         if (!line[0])
             continue;
 
-        char *token = strtok(line, "|"); // 读取id
+        /* id */
+        char *token = strtok(line, "|");
         if (!token)
             continue;
-        if (strcmp(token, id) != 0) // 如果id不匹配，继续下一行
+        if (strcmp(token, id) != 0) // 寻找匹配的患者ID，如果不匹配，继续下一行
             continue;
 
-        token = strtok(NULL, "|"); // 跳过name
+        /* 跳过name */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
-        token = strtok(NULL, "|"); // 跳过gender
+        /* 跳过gender */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
-        token = strtok(NULL, "|"); // 跳过department
+        /* 跳过department */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
 
-        token = strtok(NULL, "|"); // 读取pwd_hash
+        /* 读取pwd_hash */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
         char stored_hash[MAX_PWD_HASH];
         strncpy(stored_hash, token, sizeof(stored_hash) - 1);
         stored_hash[sizeof(stored_hash) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取salt
+        /* 读取salt */
+        token = strtok(NULL, "|");
         if (!token)
             continue;
         char stored_salt[SALT_HEX_LEN];

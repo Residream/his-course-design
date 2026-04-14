@@ -11,17 +11,17 @@
 /* 安全读取一行输入并保证缓冲区无残留 */
 void safe_input(char *str, int size)
 {
-    if (fgets(str, size, stdin) != NULL)
+    if (fgets(str, size, stdin) != NULL) // 从标准输入读取一行，最多size-1个字符，剩余一个位置留给'\0'
     {
-        size_t len = strlen(str);
+        size_t len = strlen(str); // 计算实际读取的字符串长度
 
-        if (len > 0 && str[len - 1] == '\n')
+        if (len > 0 && str[len - 1] == '\n') // 如果末尾是换行符
         {
-            str[len - 1] = '\0';
+            str[len - 1] = '\0'; // 替换换行符为字符串结束符
         }
         else
         {
-            int c;
+            int c; // 如果没有读取到换行符，说明输入过长，清空输入缓冲区
             while ((c = getchar()) != '\n' && c != EOF)
             {
             }
@@ -29,14 +29,14 @@ void safe_input(char *str, int size)
     }
     else
     {
-        str[0] = '\0';
+        str[0] = '\0'; // 读取失败时返回空字符串
     }
 
     /* 过滤管道符'|'，防止破坏文件分隔格式 */
-    char *r = str, *w = str;
+    char *r = str, *w = str; // 定义读写指针，初始都指向字符串开头
     while (*r)
     {
-        if (*r != '|')
+        if (*r != '|') // 只复制非管道符的字符
             *w++ = *r;
         r++;
     }
@@ -47,31 +47,31 @@ void safe_input(char *str, int size)
 void clear_screen(void)
 {
 #ifdef _WIN32
-    system("cls");
+    system("cls"); // Windows系统使用cls命令清屏
 #else
-    system("clear");
+    system("clear"); // Unix/Linux/Mac系统使用clear命令清屏
 #endif
 }
 
 /* 去掉字符串末尾换行(\r\n) */
 void trim_newline(char *s)
 {
-    if (!s)
+    if (!s) // 空指针防御
         return;
-    s[strcspn(s, "\r\n")] = '\0';
+    s[strcspn(s, "\r\n")] = '\0'; // strcspn返回字符串中首次出现\r或\n的位置，这里把它替换为字符串结束符
 }
 
 /* 提示并等待回车 */
 void wait_enter(void)
 {
     printf("\n按回车键继续...");
-    getchar();
+    getchar(); // 等待用户按下回车键
 }
 
 /* 生成随机盐 */
 void generate_salt(unsigned char *salt, int length)
 {
-    static int seeded = 0;
+    static int seeded = 0; // 静态变量确保只初始化一次随机数生成器
     if (!seeded)
     {
         srand((unsigned int)time(NULL)); // 仅初始化一次
@@ -80,17 +80,18 @@ void generate_salt(unsigned char *salt, int length)
 
     for (int i = 0; i < length; i++)
     {
-        salt[i] = (unsigned char)(rand() & 0xFF);
+        salt[i] = (unsigned char)(rand() & 0xFF); // 生成0~255之间的随机字节
     }
 }
 
 /* 校验姓名：仅允许汉字（UTF-8常用汉字区） */
 int is_all_chinese_utf8(const char *s)
 {
+    /* 空值与空串防御 */
     if (!s || *s == '\0')
         return 0;
 
-    const unsigned char *p = (const unsigned char *)s;
+    const unsigned char *p = (const unsigned char *)s; // 定义一个指向输入字符串的无符号字符指针，方便处理UTF-8字节
     while (*p)
     {
         /* 常见汉字UTF-8三字节：E4~E9 开头 */
@@ -128,7 +129,8 @@ int validate_choice(const char *str, int max)
     /* 安全地转换为 long */
     errno = 0;
     char *endptr;
-    long val = strtol(str, &endptr, 10);
+    long val =
+        strtol(str, &endptr, 10); // 把十进制字符串转换成long，如果溢出会设置errno为ERANGE，而atoi无法准确检测错误
 
     /* 检查是否发生整数溢出 */
     if (errno == ERANGE)
@@ -254,32 +256,32 @@ void print_align(const char *s, int width)
 /* 打开临时文件用于安全写入，写完后用 safe_fclose_commit 提交 */
 FILE *safe_fopen_tmp(const char *final_path, char *tmp_path, size_t tmp_size)
 {
-    snprintf(tmp_path, tmp_size, "%s.tmp", final_path);
-    return fopen(tmp_path, "w");
+    snprintf(tmp_path, tmp_size, "%s.tmp", final_path); // 把目标路径变为xxx.txt.tmp
+    return fopen(tmp_path, "w");                        // 打开临时文件写入
 }
 
 /* 关闭临时文件并原子替换目标文件；失败时删除临时文件并返回-1 */
 int safe_fclose_commit(FILE *fp, const char *tmp_path, const char *final_path)
 {
-    if (fflush(fp) != 0)
+    if (fflush(fp) != 0) // 确保数据写入磁盘
     {
         fclose(fp);
-        remove(tmp_path);
+        remove(tmp_path); // 如果失败就删除临时文件
         return -1;
     }
-    if (fclose(fp) != 0)
+    if (fclose(fp) != 0) // 确保文件正确关闭
     {
-        remove(tmp_path);
+        remove(tmp_path); // 如果失败就删除临时文件
         return -1;
     }
 
     /* rename 在同一文件系统上是原子操作；Windows上需先删目标 */
 #ifdef _WIN32
-    remove(final_path);
+    remove(final_path); // Windows不允许直接覆盖现有文件，所以先删除目标文件
 #endif
-    if (rename(tmp_path, final_path) != 0)
+    if (rename(tmp_path, final_path) != 0) // 原子替换目标文件，成功返回0，失败返回-1
     {
-        remove(tmp_path);
+        remove(tmp_path); // 如果失败就删除临时文件
         return -1;
     }
     return 0;
@@ -288,20 +290,24 @@ int safe_fclose_commit(FILE *fp, const char *tmp_path, const char *final_path)
 /* 渲染进度条 [████░░░░] */
 void render_bar(float ratio, int width, char *buf)
 {
-    if (!buf)
+    if (!buf) // 输出缓冲区必须存在
         return;
-    if (width < 1)
+
+    if (width < 1) // 宽度必须至少为1
     {
         buf[0] = '\0';
         return;
     }
-    if (ratio < 0.0f)
+
+    if (ratio < 0.0f) // 比例不能为负
         ratio = 0.0f;
-    if (ratio > 1.0f)
+
+    if (ratio > 1.0f) // 比例不能超过1
         ratio = 1.0f;
 
     int filled = (int)(ratio * width + 0.5f); // 四舍五入
-    if (filled > width)
+
+    if (filled > width) // 填充数不能超过宽度
         filled = width;
 
     char *p = buf;
@@ -325,23 +331,24 @@ void render_bar(float ratio, int width, char *buf)
 /* 渲染柱状图 ████████ */
 void render_hbar(int value, int max_val, int width, char *buf)
 {
-    if (!buf)
+    if (!buf) // 输出缓冲区必须存在
         return;
-    if (width < 1)
+
+    if (width < 1) // 宽度必须至少为1
     {
         buf[0] = '\0';
         return;
     }
 
     int filled = 0;
-    if (max_val > 0 && value > 0)
+    if (max_val > 0 && value > 0) // 避免除以零，并且只有当有值时才显示柱状图
     {
         /* 按比例计算填充数, 四舍五入 */
         filled = (int)((double)value / max_val * width + 0.5);
-        if (filled > width)
+        if (filled > width) // 填充数不能超过宽度
             filled = width;
         /* 有值但舍入为0时, 至少显示1格 */
-        if (filled == 0)
+        if (filled == 0) // 避免有值但显示空白的情况
             filled = 1;
     }
 
@@ -354,7 +361,7 @@ void render_hbar(int value, int max_val, int width, char *buf)
     }
     for (int i = filled; i < width; i++)
     {
-        *p++ = ' ';
+        *p++ = ' '; // 空格填充剩余部分
     }
     *p = '\0';
 }
