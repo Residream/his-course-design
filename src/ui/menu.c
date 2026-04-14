@@ -1665,40 +1665,72 @@ void doctor_visit_menu()
         printf("===== 看诊管理 =====\n");
 
         printf("[1]待接诊患者列表: \n");
-        print_registration_header(reg_w, p_w, d_w, dept_w, when_w, st_w);
+        /* 先统计 */
+        int pending_count = 0;
         Registration *r_cur = find_registration_by_d_id(r_head, g_session.user_id);
         while (r_cur)
         {
             if (r_cur->status == REG_STATUS_PENDING)
-            {
-                print_registration(r_cur, p_head, d_head, reg_w, p_w, d_w, dept_w, when_w, st_w);
-            }
+                pending_count++;
             r_cur = find_registration_by_d_id(r_cur->next, g_session.user_id);
         }
-        print_registration_line(reg_w, p_w, d_w, dept_w, when_w, st_w);
+        /* 有数据才打印表格 */
+        if (pending_count == 0)
+        {
+            printf("（暂无待接诊患者）\n");
+        }
+        else
+        {
+            print_registration_header(reg_w, p_w, d_w, dept_w, when_w, st_w);
+            r_cur = find_registration_by_d_id(r_head, g_session.user_id);
+            while (r_cur)
+            {
+                if (r_cur->status == REG_STATUS_PENDING)
+                    print_registration(r_cur, p_head, d_head, reg_w, p_w, d_w, dept_w, when_w, st_w);
+                r_cur = find_registration_by_d_id(r_cur->next, g_session.user_id);
+            }
+            print_registration_line(reg_w, p_w, d_w, dept_w, when_w, st_w);
+        }
+
+        printf("\n");
 
         printf("[2]进行中看诊患者列表: \n");
-        if (v_head)
+        if (!v_head)
         {
-            calc_visit_width(v_head, r_head, p_head, d_head, &v_w, &p_w, &d_w, &dept_w, &when_w, &st_w, &diag_w);
-            print_visit_header(v_w, p_w, d_w, dept_w, when_w, st_w, diag_w);
+            printf("（暂无进行中的看诊记录）\n");
+        }
+        else
+        {
+            /* 先统计 */
+            int ongoing_count = 0;
             Visit *v_cur = find_visit_by_d_id(v_head, r_head, g_session.user_id);
             while (v_cur)
             {
                 if (v_cur->status == VISIT_STATUS_ONGOING)
-                {
-                    print_visit(v_cur, r_head, p_head, d_head, v_w, p_w, d_w, dept_w, when_w, st_w, diag_w);
-                }
+                    ongoing_count++;
                 v_cur = find_visit_by_d_id(v_cur->next, r_head, g_session.user_id);
             }
-            print_visit_line(v_w, p_w, d_w, dept_w, when_w, st_w, diag_w);
-        }
-        else
-        {
-            printf("（暂无进行中的看诊记录）\n");
+            /* 有数据才打印表格 */
+            if (ongoing_count == 0)
+            {
+                printf("（暂无进行中的看诊记录）\n");
+            }
+            else
+            {
+                calc_visit_width(v_head, r_head, p_head, d_head, &v_w, &p_w, &d_w, &dept_w, &when_w, &st_w, &diag_w);
+                print_visit_header(v_w, p_w, d_w, dept_w, when_w, st_w, diag_w);
+                v_cur = find_visit_by_d_id(v_head, r_head, g_session.user_id);
+                while (v_cur)
+                {
+                    if (v_cur->status == VISIT_STATUS_ONGOING)
+                        print_visit(v_cur, r_head, p_head, d_head, v_w, p_w, d_w, dept_w, when_w, st_w, diag_w);
+                    v_cur = find_visit_by_d_id(v_cur->next, r_head, g_session.user_id);
+                }
+                print_visit_line(v_w, p_w, d_w, dept_w, when_w, st_w, diag_w);
+            }
         }
 
-        printf("1.选择待接诊患者\n");
+        printf("\n1.选择待接诊患者\n");
         printf("2.选择进行中看诊患者\n");
         printf("0.返回上级菜单\n");
         printf("请输入您的选择: ");
