@@ -174,7 +174,13 @@ int str_width(const char *s)
         {
             /* 2字节序列：默认宽度1 */
             width += 1;
-            s += ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF) ? 2 : 1;
+
+            int step = 1; // 实际字节数，默认为1
+
+            if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF) // 如果第二字节合法，确认为2字节序列
+                step = 2;
+
+            s += step;
         }
         else if (c0 < 0xF0)
         {
@@ -197,13 +203,15 @@ int str_width(const char *s)
 
             width += w;
 
-            int step = 1;
-            if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF)
+            int step = 1; // 实际字节数，默认为1
+
+            if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF) // 如果第二字节合法，至少是2字节序列
             {
                 step = 2;
-                if ((unsigned char)s[2] >= 0x80 && (unsigned char)s[2] <= 0xBF)
+                if ((unsigned char)s[2] >= 0x80 && (unsigned char)s[2] <= 0xBF) // 如果第三字节也合法，确认为3字节序列
                     step = 3;
             }
+
             s += step;
         }
         else
@@ -211,17 +219,20 @@ int str_width(const char *s)
             /* 4字节序列(emoji等)：默认宽度2 */
             width += 2;
 
-            int step = 1;
-            if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF)
+            int step = 1; // 实际字节数，默认为1
+
+            if ((unsigned char)s[1] >= 0x80 && (unsigned char)s[1] <= 0xBF) // 如果第二字节合法，至少是2字节序列
             {
                 step = 2;
-                if ((unsigned char)s[2] >= 0x80 && (unsigned char)s[2] <= 0xBF)
+                if ((unsigned char)s[2] >= 0x80 && (unsigned char)s[2] <= 0xBF) // 如果第三字节也合法，至少是3字节序列
                 {
                     step = 3;
-                    if ((unsigned char)s[3] >= 0x80 && (unsigned char)s[3] <= 0xBF)
+                    if ((unsigned char)s[3] >= 0x80 &&
+                        (unsigned char)s[3] <= 0xBF) // 如果第四字节也合法，确认为4字节序列
                         step = 4;
                 }
             }
+
             s += step;
         }
     }
@@ -234,22 +245,24 @@ int format_beijing_time(time_t t, char *buf, size_t buf_size)
     if (!buf || buf_size < 20)
         return 0;
 
-    time_t bj = t + 8 * 3600; // UTC+8
-    struct tm *ptm = gmtime(&bj);
-    if (!ptm)
+    time_t bj = t + 8 * 3600;     // UTC+8
+    struct tm *ptm = gmtime(&bj); // 把北京时间当成UTC时间来格式化，把时间戳拆分
+
+    if (!ptm) // 时间无效时gmtime返回NULL
         return 0;
 
-    strftime(buf, buf_size, "%Y-%m-%d %H:%M:%S", ptm);
+    strftime(buf, buf_size, "%Y-%m-%d %H:%M:%S", ptm); // 按模板格式化时间字符串
     return 1;
 }
 
-/* 打印对齐的字符串 */
+/* 左对齐打印字符串 */
 void print_align(const char *s, int width)
 {
-    int w = str_width(s);
-    printf("%s", s);
+    int w = str_width(s); // 计算字符串显示宽度
 
-    for (int i = w; i < width; i++)
+    printf("%s", s); // 先输出字符串
+
+    for (int i = w; i < width; i++) // 再输出足够的空格来填充到指定宽度
         printf(" ");
 }
 
