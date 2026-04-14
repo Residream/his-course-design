@@ -4,6 +4,7 @@
 #include "model/ward.h"
 #include "core/utils.h"
 #include "model/bed.h"
+#include "model/department.h"
 
 /*
  *病房基础功能
@@ -361,7 +362,7 @@ void add_ward()
     char department[MAX_NAME_LEN];
     int capacity;
 
-    /* 病房名称 */
+    /* 获取病房名称 */
     while (1)
     {
         printf("请输入病房名称(输入0返回): ");
@@ -383,7 +384,7 @@ void add_ward()
         break;
     }
 
-    /* 病房类型 */
+    /* 获取病房类型 */
     while (1)
     {
         printf("请选择病房类型(1=ICU 2=普通 3=VIP，输入0返回): ");
@@ -407,9 +408,10 @@ void add_ward()
         break;
     }
 
-    /* 关联科室 */
+    /* 获取关联科室 */
     while (1)
     {
+        print_department_hint();
         printf("请输入关联科室名称(输入0返回): ");
         safe_input(department, sizeof(department));
 
@@ -421,6 +423,13 @@ void add_ward()
             printf("输入错误！科室名称不能为空，请重新输入。\n");
             continue;
         }
+
+        if (!is_valid_department(department))
+        {
+            printf("输入错误！科室不在可选范围，请重新输入。\n");
+            continue;
+        }
+
         break;
     }
 
@@ -482,6 +491,13 @@ void delete_ward()
     safe_input(ward_id, sizeof(ward_id));
     if (strcmp(ward_id, "0") == 0)
     {
+        clear_screen();
+        return;
+    }
+    if (ward_id[0] == '\0')
+    {
+        printf("输入错误！病房ID不能为空。\n");
+        wait_enter();
         clear_screen();
         return;
     }
@@ -574,26 +590,31 @@ void delete_ward()
 /* 显示所有病房 */
 void show_all_wards()
 {
-    Ward *w_head = load_wards_from_file();
-    if (!w_head)
+    while (1)
     {
-        printf("暂无病房数据！\n");
+        clear_screen();
+        Ward *w_head = load_wards_from_file();
+        if (!w_head)
+        {
+            printf("暂无病房数据！\n");
+            wait_enter();
+            clear_screen();
+            return;
+        }
+        Ward *current = w_head;
+        printf("===== 所有病房信息 =====\n");
+        int id_w, name_w, type_w, dept_w, cap_w, occ_w;
+        calc_ward_width(w_head, &id_w, &name_w, &type_w, &dept_w, &cap_w, &occ_w);
+        print_ward_header(id_w, name_w, type_w, dept_w, cap_w, occ_w);
+        while (current)
+        {
+            print_ward(current, id_w, name_w, type_w, dept_w, cap_w, occ_w);
+            current = current->next;
+        }
+        print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
+        free_wards(w_head);
         wait_enter();
         clear_screen();
         return;
     }
-    Ward *current = w_head;
-    printf("所有病房信息:\n");
-    int id_w, name_w, type_w, dept_w, cap_w, occ_w;
-    calc_ward_width(w_head, &id_w, &name_w, &type_w, &dept_w, &cap_w, &occ_w);
-    print_ward_header(id_w, name_w, type_w, dept_w, cap_w, occ_w);
-    while (current)
-    {
-        print_ward(current, id_w, name_w, type_w, dept_w, cap_w, occ_w);
-        current = current->next;
-    }
-    print_ward_line(id_w, name_w, type_w, dept_w, cap_w, occ_w);
-    free_wards(w_head);
-    wait_enter();
-    clear_screen();
 }
