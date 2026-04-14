@@ -149,22 +149,41 @@ void login_menu()
             break;
         }
         case 2: {
+            /* 输入医生ID */
             char id[MAX_ID_LEN];
             printf("请输入医生ID(输入0返回): ");
             safe_input(id, sizeof(id));
+            if (id[0] == '\0')
+            {
+                printf("输入错误！医生ID不能为空。\n");
+                wait_enter();
+                clear_screen();
+                break;
+            }
             if (strcmp(id, "0") == 0)
             {
                 clear_screen();
                 break;
             }
+
+            /* 输入医生密码 */
             char password[MAX_INPUT_LEN];
             printf("请输入医生密码(输入0返回): ");
             safe_input(password, sizeof(password));
+            if (password[0] == '\0')
+            {
+                printf("输入错误！密码不能为空。\n");
+                wait_enter();
+                clear_screen();
+                break;
+            }
             if (strcmp(password, "0") == 0)
             {
                 clear_screen();
                 break;
             }
+
+            /* 登陆验证 */
             if (doctor_login_by_file(DOCTORS_FILE, id, password))
             {
                 session_set("doctor", id);
@@ -264,22 +283,41 @@ void patient_pre_menu()
             break;
         }
         case 2: {
+            /* 输入患者ID */
             char id[MAX_ID_LEN];
             printf("请输入患者ID(输入0返回): ");
             safe_input(id, sizeof(id));
+            if (id[0] == '\0')
+            {
+                printf("输入错误！患者ID不能为空。\n");
+                wait_enter();
+                clear_screen();
+                break;
+            }
             if (strcmp(id, "0") == 0)
             {
                 clear_screen();
                 break;
             }
+
+            /* 输入患者密码 */
             char password[MAX_INPUT_LEN];
             printf("请输入患者密码(输入0返回): ");
             safe_input(password, sizeof(password));
+            if (password[0] == '\0')
+            {
+                printf("输入错误！密码不能为空。\n");
+                wait_enter();
+                clear_screen();
+                break;
+            }
             if (strcmp(password, "0") == 0)
             {
                 clear_screen();
                 break;
             }
+
+            /* 登陆验证 */
             if (patient_login_by_file(PATIENTS_FILE, id, password))
             {
                 session_set("patient", id);
