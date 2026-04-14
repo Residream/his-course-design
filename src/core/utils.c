@@ -3,6 +3,12 @@
  */
 #include "core/utils.h"
 #include <errno.h>
+#ifdef _WIN32
+#include <conio.h>
+#else
+#include <termios.h>
+#include <unistd.h>
+#endif
 
 /*
  * 工具函数实现
@@ -61,11 +67,25 @@ void trim_newline(char *s)
     s[strcspn(s, "\r\n")] = '\0'; // strcspn返回字符串中首次出现\r或\n的位置，这里把它替换为字符串结束符
 }
 
-/* 提示并等待回车 */
+/* 提示并等待按键 */
 void wait_enter(void)
 {
-    printf("\n按回车键继续...");
-    getchar(); // 等待用户按下回车键
+    printf("\n按任意键继续...");
+    fflush(stdout);
+
+#ifdef _WIN32
+    /* Windows */
+    _getch(); // _getch()函数从控制台读取一个字符，不需要按回车，并且不回显
+#else
+    /* Linux / macOS */
+    struct termios oldt, newt; // 定义两个termios结构体变量，oldt用于保存当前终端设置，newt用于修改后的设置
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO); // 新终端设置禁用规范模式和回显
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    getchar();
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // 恢复旧终端设置
+#endif
 }
 
 /* 生成随机盐 */
