@@ -204,6 +204,18 @@ void login_menu()
             char name[MAX_NAME_LEN];
             printf("请输入管理员用户名(输入0返回): ");
             safe_input(name, sizeof(name));
+            if (name[0] == '\0')
+            {
+                printf("输入错误！用户名不能为空。\n");
+                wait_enter();
+                clear_screen();
+                break;
+            }
+            if (strcmp(name, "0") == 0)
+            {
+                clear_screen();
+                break;
+            }
             if (strcmp(name, "0") == 0)
             {
                 clear_screen();
