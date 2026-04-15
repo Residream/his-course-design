@@ -47,7 +47,7 @@ int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const cha
 int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const char *hosp_id); // 出院
 
 /*
- * 住院业务函数
+ * 住院系统功能
  */
 void doctor_admit_patient_hospitalization(const char *v_id);     // 医生办理住院
 void doctor_discharge_patient_hospitalization(const char *v_id); // 医生办理出院

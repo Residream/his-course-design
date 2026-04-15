@@ -31,7 +31,7 @@ Ward create_ward(const char *ward_id, const char *name, const char *type, const 
 void append_ward(Ward **head, Ward *new_ward); // 尾插病房
 
 /*
- * 病房业务函数
+ * 病房系统功能
  */
 void add_ward();       // 添加病房
 void delete_ward();    // 删除病房

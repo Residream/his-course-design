@@ -34,7 +34,7 @@ Bed create_bed(const char *bed_id, const char *ward_id, int bed_no, int status);
 void append_bed(Bed **head, Bed *new_bed);                                       // 尾插床位
 
 /*
- * 床位业务函数
+ * 床位系统功能
  */
 void add_bed();       // 添加床位
 void delete_bed();    // 删除床位
