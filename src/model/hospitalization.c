@@ -40,7 +40,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         memset(node, 0, sizeof(Hospitalization));
 
-        char *token = strtok(line, "|"); // hosp_id
+        /* 获取hosp_id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -48,7 +49,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         strncpy(node->hosp_id, token, sizeof(node->hosp_id) - 1);
 
-        token = strtok(NULL, "|"); // visit_id
+        /* 获取visit_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -56,7 +58,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         strncpy(node->visit_id, token, sizeof(node->visit_id) - 1);
 
-        token = strtok(NULL, "|"); // p_id
+        /* 获取p_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -64,7 +67,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         strncpy(node->p_id, token, sizeof(node->p_id) - 1);
 
-        token = strtok(NULL, "|"); // ward_id
+        /* 获取ward_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -72,7 +76,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         strncpy(node->ward_id, token, sizeof(node->ward_id) - 1);
 
-        token = strtok(NULL, "|"); // bed_id
+        /* 获取bed_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -80,7 +85,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         strncpy(node->bed_id, token, sizeof(node->bed_id) - 1);
 
-        token = strtok(NULL, "|"); // admit_date
+        /* 获取admit_date */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -95,7 +101,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         node->admit_date = (time_t)admit_val;
 
-        token = strtok(NULL, "|"); // discharge_date
+        /* 获取discharge_date */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -110,7 +117,8 @@ Hospitalization *load_hospitalizations_from_file(void)
         }
         node->discharge_date = (time_t)discharge_val;
 
-        token = strtok(NULL, "|"); // status
+        /* 获取status */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);

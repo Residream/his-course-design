@@ -34,6 +34,7 @@ Department *load_departments_from_file(void)
         }
         memset(node, 0, sizeof(Department));
 
+        /* 获取name */
         strncpy(node->name, line, sizeof(node->name) - 1);
         node->name[sizeof(node->name) - 1] = '\0';
         node->next = NULL;
@@ -161,7 +162,7 @@ void add_department()
         clear_screen();
         print_all_departments();
 
-        printf("\n请输入要添加的科室名称(输入0返回): ");
+        printf("\n请输入要添加的科室名称(汉字 | 输入0返回): ");
         safe_input(name, sizeof(name));
 
         if (strcmp(name, "0") == 0)
@@ -230,7 +231,7 @@ void delete_department()
         clear_screen();
         print_all_departments();
 
-        printf("\n请输入要删除的科室名称(输入0返回): ");
+        printf("\n请输入要删除的科室名称(汉字 | 输入0返回): ");
         safe_input(name, sizeof(name));
 
         if (strcmp(name, "0") == 0)
@@ -345,7 +346,7 @@ void show_department_doctors()
         clear_screen();
         print_all_departments();
 
-        printf("\n请选择要显示医生的科室名称(输入0返回): ");
+        printf("\n请选择要显示医生的科室名称(汉字 | 输入0返回): ");
         safe_input(name, sizeof(name));
         if (strcmp(name, "0") == 0)
         {

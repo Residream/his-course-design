@@ -39,7 +39,8 @@ Doctor *load_doctors_from_file(void)
         }
         memset(node, 0, sizeof(Doctor));
 
-        char *token = strtok(line, "|"); // id
+        /* 获取id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -48,7 +49,8 @@ Doctor *load_doctors_from_file(void)
         strncpy(node->id, token, sizeof(node->id) - 1);
         node->id[sizeof(node->id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // name
+        /* 获取name */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -57,7 +59,8 @@ Doctor *load_doctors_from_file(void)
         strncpy(node->name, token, sizeof(node->name) - 1);
         node->name[sizeof(node->name) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // gender
+        /* 获取gender */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -66,7 +69,15 @@ Doctor *load_doctors_from_file(void)
         strncpy(node->gender, token, sizeof(node->gender) - 1);
         node->gender[sizeof(node->gender) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // department
+        /* 获取department */
+        token = strtok(NULL, "|");
+        if (!token)
+        {
+            free(node);
+            continue;
+        }
+        strncpy(node->department, token, sizeof(node->department) - 1);
+        node->department[sizeof(node->department) - 1] = '\0';
         if (!token)
         {
             free(node);
@@ -75,7 +86,8 @@ Doctor *load_doctors_from_file(void)
         strncpy(node->department, token, sizeof(node->department) - 1);
         node->department[sizeof(node->department) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // pwd_hash
+        /* 获取pwd_hash */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -84,7 +96,8 @@ Doctor *load_doctors_from_file(void)
         strncpy(node->pwd_hash, token, sizeof(node->pwd_hash) - 1);
         node->pwd_hash[sizeof(node->pwd_hash) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // salt
+        /* 获取salt */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);

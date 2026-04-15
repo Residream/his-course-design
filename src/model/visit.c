@@ -40,7 +40,8 @@ Visit *load_visits_from_file(void)
         }
         memset(node, 0, sizeof(Visit));
 
-        char *token = strtok(line, "|"); // visit_id
+        /* 获取visit_id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -49,7 +50,8 @@ Visit *load_visits_from_file(void)
         strncpy(node->visit_id, token, sizeof(node->visit_id) - 1);
         node->visit_id[sizeof(node->visit_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // reg_id
+        /* 获取reg_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -58,7 +60,8 @@ Visit *load_visits_from_file(void)
         strncpy(node->reg_id, token, sizeof(node->reg_id) - 1);
         node->reg_id[sizeof(node->reg_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // when
+        /* 获取when */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -73,7 +76,8 @@ Visit *load_visits_from_file(void)
         }
         node->when = (time_t)when_val;
 
-        token = strtok(NULL, "|"); // status
+        /* 获取status */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -88,7 +92,8 @@ Visit *load_visits_from_file(void)
         }
         node->status = (int)status_val;
 
-        token = strtok(NULL, "|"); // diagnosis (可选，未来可能添加)
+        /* 获取diagnosis (可选，未来可能添加) */
+        token = strtok(NULL, "|");
         if (token)
         {
             strncpy(node->diagnosis, token, sizeof(node->diagnosis) - 1);

@@ -39,7 +39,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         memset(node, 0, sizeof(Prescription));
 
-        char *token = strtok(line, "|"); // pr_id
+        /* 获取pr_id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -47,7 +48,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->pr_id, token, sizeof(node->pr_id) - 1);
 
-        token = strtok(NULL, "|"); // visit_id
+        /* 获取visit_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -55,7 +57,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->visit_id, token, sizeof(node->visit_id) - 1);
 
-        token = strtok(NULL, "|"); // d_id
+        /* 获取d_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -63,7 +66,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->d_id, token, sizeof(node->d_id) - 1);
 
-        token = strtok(NULL, "|"); // p_id
+        /* 获取p_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -71,7 +75,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->p_id, token, sizeof(node->p_id) - 1);
 
-        token = strtok(NULL, "|"); // drug
+        /* 获取drug_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -79,7 +84,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->drug_id, token, sizeof(node->drug_id) - 1);
 
-        token = strtok(NULL, "|"); // dose
+        /* 获取dose */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -87,7 +93,8 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->dose, token, sizeof(node->dose) - 1);
 
-        token = strtok(NULL, "|"); // frequency
+        /* 获取frequency */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -420,7 +427,7 @@ void add_prescription_record()
     Visit *visit = NULL;
     Registration *reg = NULL;
 
-    /* 1. 获取并验证看诊ID */
+    /* 获取并验证看诊ID */
     while (1)
     {
         printf("请输入看诊ID(输入0返回): ");
@@ -450,7 +457,7 @@ void add_prescription_record()
         break;
     }
 
-    /* 2. 获取并验证患者ID */
+    /* 获取并验证患者ID */
     while (1)
     {
         printf("请输入患者ID(输入0返回): ");
@@ -474,7 +481,7 @@ void add_prescription_record()
         break;
     }
 
-    /* 3. 获取并验证医生ID */
+    /* 获取并验证医生ID */
     while (1)
     {
         printf("请输入医生ID(输入0返回): ");
@@ -498,7 +505,7 @@ void add_prescription_record()
         break;
     }
 
-    /* 4. 获取并验证药品ID */
+    /* 获取并验证药品ID */
     while (1)
     {
         printf("请输入药品ID(输入0返回): ");
@@ -517,7 +524,7 @@ void add_prescription_record()
         break;
     }
 
-    /* 5. 剂量 */
+    /* 剂量 */
     while (1)
     {
         printf("请输入剂量(如 1粒, 10ml, 输入0返回): ");
@@ -528,7 +535,7 @@ void add_prescription_record()
             break;
     }
 
-    /* 6. 频次 */
+    /* 频次 */
     while (1)
     {
         printf("请输入频次(如 1日3次, 输入0返回): ");

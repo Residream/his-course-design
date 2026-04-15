@@ -35,7 +35,8 @@ Ward *load_wards_from_file(void)
         }
         memset(node, 0, sizeof(Ward));
 
-        char *token = strtok(line, "|"); // ward_id
+        /* 获取ward_id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -43,7 +44,8 @@ Ward *load_wards_from_file(void)
         }
         strncpy(node->ward_id, token, sizeof(node->ward_id) - 1);
 
-        token = strtok(NULL, "|"); // name
+        /* 获取name */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -51,7 +53,8 @@ Ward *load_wards_from_file(void)
         }
         strncpy(node->name, token, sizeof(node->name) - 1);
 
-        token = strtok(NULL, "|"); // type
+        /* 获取type */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -59,7 +62,8 @@ Ward *load_wards_from_file(void)
         }
         strncpy(node->type, token, sizeof(node->type) - 1);
 
-        token = strtok(NULL, "|"); // department
+        /* 获取department */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -67,7 +71,8 @@ Ward *load_wards_from_file(void)
         }
         strncpy(node->department, token, sizeof(node->department) - 1);
 
-        token = strtok(NULL, "|"); // capacity
+        /* 获取capacity */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -82,7 +87,8 @@ Ward *load_wards_from_file(void)
         }
         node->capacity = (int)capacity_val;
 
-        token = strtok(NULL, "|"); // occupied
+        /* 获取occupied */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -365,7 +371,7 @@ void add_ward()
     /* 获取病房名称 */
     while (1)
     {
-        printf("请输入病房名称(输入0返回): ");
+        printf("请输入病房名称(汉字 | 输入0返回): ");
         safe_input(name, sizeof(name));
 
         if (strcmp(name, "0") == 0)
@@ -433,7 +439,7 @@ void add_ward()
         break;
     }
 
-    /* 床位总数 */
+    /* 获取床位总数 */
     while (1)
     {
         char cap_str[16];

@@ -35,7 +35,8 @@ Registration *load_registrations_from_file(void)
         }
         memset(node, 0, sizeof(Registration));
 
-        char *token = strtok(line, "|"); // reg_id
+        /* 获取reg_id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -44,7 +45,8 @@ Registration *load_registrations_from_file(void)
         strncpy(node->reg_id, token, sizeof(node->reg_id) - 1);
         node->reg_id[sizeof(node->reg_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // p_id
+        /* 获取p_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -53,7 +55,8 @@ Registration *load_registrations_from_file(void)
         strncpy(node->p_id, token, sizeof(node->p_id) - 1);
         node->p_id[sizeof(node->p_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // d_id
+        /* 获取d_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -62,7 +65,8 @@ Registration *load_registrations_from_file(void)
         strncpy(node->d_id, token, sizeof(node->d_id) - 1);
         node->d_id[sizeof(node->d_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // when
+        /* 获取when */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -77,7 +81,8 @@ Registration *load_registrations_from_file(void)
         }
         node->when = (time_t)when_val;
 
-        token = strtok(NULL, "|"); // status
+        /* 获取status */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);

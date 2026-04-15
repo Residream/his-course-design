@@ -37,7 +37,8 @@ Exam *load_exams_from_file(void)
         }
         memset(node, 0, sizeof(Exam));
 
-        char *token = strtok(line, "|"); // exam_id
+        /* 获取exam_id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -46,7 +47,8 @@ Exam *load_exams_from_file(void)
         strncpy(node->exam_id, token, sizeof(node->exam_id) - 1);
         node->exam_id[sizeof(node->exam_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // visit_id
+        /* 获取visit_id */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -55,7 +57,8 @@ Exam *load_exams_from_file(void)
         strncpy(node->visit_id, token, sizeof(node->visit_id) - 1);
         node->visit_id[sizeof(node->visit_id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // item
+        /* 获取item */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -64,7 +67,8 @@ Exam *load_exams_from_file(void)
         strncpy(node->item, token, sizeof(node->item) - 1);
         node->item[sizeof(node->item) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // result（可选）
+        /* 获取result（可选） */
+        token = strtok(NULL, "|");
         if (token)
         {
             strncpy(node->result, token, sizeof(node->result) - 1);
@@ -466,6 +470,7 @@ void add_exam_record()
     Exam *e_head = load_exams_from_file();
     Visit *v_head = load_visits_from_file();
 
+    /* 获取看诊ID */
     while (1)
     {
         printf("请输入看诊ID(输入0返回): ");
@@ -489,6 +494,7 @@ void add_exam_record()
             break;
         }
 
+        /* 获取检查项目 */
         printf("请输入检查项目(输入0返回): ");
         safe_input(item, sizeof(item));
         if (strcmp(item, "0") == 0)

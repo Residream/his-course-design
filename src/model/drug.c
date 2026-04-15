@@ -805,7 +805,7 @@ void add_drug()
     print_department_hint();
     while (1)
     {
-        printf("请输入药品适用科室(回车 = '通用' | 输入0返回): ");
+        printf("请输入药品适用科室(回车 = '通用' | 汉字 | 输入0返回): ");
         safe_input(department_input, sizeof(department_input));
         if (strcmp(department_input, "0") == 0)
         {
@@ -1260,7 +1260,7 @@ void update_drug()
             print_department_hint();
             while (1)
             {
-                printf("请输入新的适用科室(回车 = '通用' | 输入0取消): ");
+                printf("请输入新的适用科室(回车 = '通用' | 汉字 | 输入0取消): ");
                 safe_input(buf, sizeof(buf));
                 if (strcmp(buf, "0") == 0)
                     break;
@@ -1336,7 +1336,7 @@ void query_drug()
         if (select == 3)
         {
             print_department_hint();
-            printf("请输入科室名称(回车 = '通用' | 输入0返回): ");
+            printf("请输入科室名称(回车 = '通用' | 汉字 | 输入0返回): ");
             safe_input(query, sizeof(query));
             if (strcmp(query, "0") == 0)
                 continue;
@@ -1478,6 +1478,7 @@ void add_pharmacy()
     int id_num = generate_next_pharmacy_id(head);
     snprintf(new_node->id, sizeof(new_node->id), "PH%04d", id_num);
 
+    /* 获取药房名称 */
     while (1)
     {
         printf("请输入药房名称(汉字 | 输入0返回): ");
@@ -1501,6 +1502,7 @@ void add_pharmacy()
         break;
     }
 
+    /* 获取药房位置 */
     while (1)
     {
         printf("请输入药房位置(汉字 | 输入0返回): ");

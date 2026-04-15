@@ -43,7 +43,8 @@ Patient *load_patients_from_file(void)
         }
         memset(node, 0, sizeof(Patient)); // 初始化内存
 
-        char *token = strtok(line, "|"); // 读取id
+        /* 获取id */
+        char *token = strtok(line, "|");
         if (!token)
         {
             free(node);
@@ -52,7 +53,8 @@ Patient *load_patients_from_file(void)
         strncpy(node->id, token, sizeof(node->id) - 1);
         node->id[sizeof(node->id) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取name
+        /* 获取name */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -61,7 +63,8 @@ Patient *load_patients_from_file(void)
         strncpy(node->name, token, sizeof(node->name) - 1);
         node->name[sizeof(node->name) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取gender
+        /* 获取gender */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -70,7 +73,8 @@ Patient *load_patients_from_file(void)
         strncpy(node->gender, token, sizeof(node->gender) - 1);
         node->gender[sizeof(node->gender) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取age
+        /* 获取age */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -85,7 +89,8 @@ Patient *load_patients_from_file(void)
         }
         node->age = (int)age_val;
 
-        token = strtok(NULL, "|"); // 读取pwd_hash
+        /* 获取pwd_hash */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -94,7 +99,8 @@ Patient *load_patients_from_file(void)
         strncpy(node->pwd_hash, token, sizeof(node->pwd_hash) - 1);
         node->pwd_hash[sizeof(node->pwd_hash) - 1] = '\0';
 
-        token = strtok(NULL, "|"); // 读取salt
+        /* 获取salt */
+        token = strtok(NULL, "|");
         if (!token)
         {
             free(node);
@@ -363,7 +369,7 @@ void add_patient()
     char password[MAX_INPUT_LEN];
     int age = 0;
 
-    /* 姓名 */
+    /* 获取姓名 */
     while (1)
     {
         printf("请输入患者姓名(汉字 | 输入0返回): ");
@@ -385,7 +391,7 @@ void add_patient()
         break;
     }
 
-    /* 性别 */
+    /* 获取性别 */
     while (1)
     {
         printf("请选择患者性别(男/女 | 输入0返回): ");
@@ -407,7 +413,7 @@ void add_patient()
         break;
     }
 
-    /* 年龄 */
+    /* 获取年龄 */
     while (1)
     {
         char age_buf[MAX_INPUT_LEN];
@@ -462,7 +468,7 @@ void add_patient()
         break;
     }
 
-    /* 密码 */
+    /* 获取密码 */
     while (1)
     {
         printf("请输入患者密码(输入0返回): ");

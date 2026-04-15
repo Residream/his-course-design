@@ -34,7 +34,7 @@ Bed *load_beds_from_file(void)
         }
         memset(node, 0, sizeof(Bed));
 
-        /* bed_id */
+        /* 获取bed_id */
         char *token = strtok(line, "|");
         if (!token)
         {
@@ -43,7 +43,7 @@ Bed *load_beds_from_file(void)
         }
         strncpy(node->bed_id, token, sizeof(node->bed_id) - 1);
 
-        /* ward_id */
+        /* 获取ward_id */
         token = strtok(NULL, "|");
         if (!token)
         {
@@ -52,7 +52,7 @@ Bed *load_beds_from_file(void)
         }
         strncpy(node->ward_id, token, sizeof(node->ward_id) - 1);
 
-        /* bed_no */
+        /* 获取bed_no */
         token = strtok(NULL, "|");
         if (!token)
         {
@@ -69,7 +69,7 @@ Bed *load_beds_from_file(void)
         }
         node->bed_no = (int)bed_no_val;
 
-        /* status */
+        /* 获取status */
         token = strtok(NULL, "|");
         if (!token)
         {
