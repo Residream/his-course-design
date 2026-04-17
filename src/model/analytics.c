@@ -395,6 +395,8 @@ static void print_ward_stay_line_separator(int name_w, int cnt_w, int avg_w, int
  */
 void analytics_ward_utilization(void)
 {
+#define SEC_COUNT 4
+
     clear_screen();
 
     /* 加载数据 */
@@ -405,53 +407,26 @@ void analytics_ward_utilization(void)
         wait_enter();
         return;
     }
-
     Hospitalization *h_head = load_hospitalizations_from_file();
-
-    /* ===== 第一部分: 病房利用率总览 ===== */
-    printf("===== 病房利用率总览 =====\n");
-
-    /* 计算列宽 */
-    int name_w, cap_w, occ_w, rate_w, bar_w;
-    calc_ward_utilization_width(w_head, &name_w, &cap_w, &occ_w, &rate_w, &bar_w);
-
-    /* 打印表头 */
-    print_ward_utilization_header(name_w, cap_w, occ_w, rate_w, bar_w);
-
-    /* 计算全院总床位数和占用数 */
-    int total_capacity = 0, total_occupied = 0;
-    for (Ward *w = w_head; w; w = w->next)
-    {
-        total_capacity += w->capacity;
-        total_occupied += w->occupied;
-    }
-
-    /* 打印每行数据 */
-    for (Ward *w = w_head; w; w = w->next)
-    {
-        print_ward_utilization_line(w, name_w, cap_w, occ_w, rate_w, bar_w);
-    }
-
-    /* 打印分隔线 */
-    print_ward_utilization_line_separator(name_w, cap_w, occ_w, rate_w, bar_w);
-
-    /* 全院综合利用率 */
-    float total_ratio = (total_capacity > 0) ? (float)total_occupied / total_capacity : 0.0f;
-    char total_bar[ANALYTICS_BAR_BUF_SIZE];
-    render_bar(total_ratio, ANALYTICS_SUMMARY_BAR_WIDTH, total_bar);
-    printf("全院综合利用率: %s %.1f%%  (%d/%d)\n\n", total_bar, total_ratio * 100.0f, total_occupied, total_capacity);
-
-    /* ===== 第二部分: 病房周转率统计 ===== */
-    printf("===== 病房周转率统计 =====\n");
 
     /* 统计病房数量 */
     int ward_count = 0;
     for (Ward *w = w_head; w; w = w->next)
         ward_count++;
 
-    /* 分配周转率统计数组 */
-    WardTurnoverStats *turnovers = (WardTurnoverStats *)calloc(ward_count, sizeof(WardTurnoverStats));
-    if (!turnovers)
+    if (ward_count <= 0)
+    {
+        printf("暂无病房数据！\n");
+        free_wards(w_head);
+        if (h_head)
+            free_hospitalizations(h_head);
+        wait_enter();
+        return;
+    }
+
+    /* 将病房链表转成数组，方便按页索引 */
+    Ward **ward_arr = (Ward **)calloc(ward_count, sizeof(Ward *));
+    if (!ward_arr)
     {
         printf("内存分配失败！\n");
         free_wards(w_head);
@@ -460,19 +435,50 @@ void analytics_ward_utilization(void)
         wait_enter();
         return;
     }
-
-    /* 初始化周转率统计 */
-    int idx = 0;
-    for (Ward *w = w_head; w; w = w->next, idx++)
     {
-        strncpy(turnovers[idx].ward_id, w->ward_id, MAX_ID_LEN - 1);
-        strncpy(turnovers[idx].name, w->name, MAX_NAME_LEN - 1);
-        turnovers[idx].capacity = w->capacity;
-        turnovers[idx].discharged = 0;
-        turnovers[idx].turnover_rate = 0.0f;
+        int i = 0;
+        for (Ward *w = w_head; w; w = w->next)
+            ward_arr[i++] = w;
     }
 
-    /* 遍历住院记录统计出院人次 */
+    /* ===== 预计算：第一部分所需 ===== */
+    int name_w, cap_w, occ_w, rate_w, bar_w;
+    calc_ward_utilization_width(w_head, &name_w, &cap_w, &occ_w, &rate_w, &bar_w);
+
+    int total_capacity = 0, total_occupied = 0;
+    for (int i = 0; i < ward_count; i++)
+    {
+        total_capacity += ward_arr[i]->capacity;
+        total_occupied += ward_arr[i]->occupied;
+    }
+    float total_ratio = (total_capacity > 0) ? (float)total_occupied / total_capacity : 0.0f;
+    char total_bar[ANALYTICS_BAR_BUF_SIZE];
+    render_bar(total_ratio, ANALYTICS_SUMMARY_BAR_WIDTH, total_bar);
+
+    /* ===== 预计算：第二部分 周转率 ===== */
+    WardTurnoverStats *turnovers = (WardTurnoverStats *)calloc(ward_count, sizeof(WardTurnoverStats));
+    if (!turnovers)
+    {
+        printf("内存分配失败！\n");
+        free(ward_arr);
+        free_wards(w_head);
+        if (h_head)
+            free_hospitalizations(h_head);
+        wait_enter();
+        return;
+    }
+
+    for (int i = 0; i < ward_count; i++)
+    {
+        strncpy(turnovers[i].ward_id, ward_arr[i]->ward_id, MAX_ID_LEN - 1);
+        turnovers[i].ward_id[MAX_ID_LEN - 1] = '\0';
+        strncpy(turnovers[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1);
+        turnovers[i].name[MAX_NAME_LEN - 1] = '\0';
+        turnovers[i].capacity = ward_arr[i]->capacity;
+        turnovers[i].discharged = 0;
+        turnovers[i].turnover_rate = 0.0f;
+    }
+
     if (h_head)
     {
         for (Hospitalization *h = h_head; h; h = h->next)
@@ -491,40 +497,22 @@ void analytics_ward_utilization(void)
         }
     }
 
-    /* 计算周转率 */
     for (int i = 0; i < ward_count; i++)
     {
         turnovers[i].turnover_rate =
             (turnovers[i].capacity > 0) ? (float)turnovers[i].discharged / turnovers[i].capacity : 0.0f;
     }
 
-    /* 计算周转率表格列宽 */
     int t_name_w, t_dis_w, t_turn_w;
     calc_ward_turnover_width(turnovers, ward_count, &t_name_w, &t_dis_w, &t_turn_w);
 
-    /* 打印周转率表头 */
-    print_ward_turnover_header(t_name_w, t_dis_w, t_turn_w);
-
-    /* 打印周转率数据行 */
-    for (int i = 0; i < ward_count; i++)
-    {
-        print_ward_turnover_line(&turnovers[i], t_name_w, t_dis_w, t_turn_w);
-    }
-
-    /* 打印周转率分隔线 */
-    int t_widths[] = {t_name_w, t_dis_w, t_turn_w};
-    print_analytics_line(3, t_widths);
-
-    free(turnovers);
-
-    /* ===== 第三部分: 空床率排名 ===== */
-    printf("\n===== 空床率排名（从高到低）=====\n");
-
-    /* 构建空床率统计数组 */
+    /* ===== 预计算：第三部分 空床率 ===== */
     WardEmptyStats *empties = (WardEmptyStats *)calloc(ward_count, sizeof(WardEmptyStats));
     if (!empties)
     {
         printf("内存分配失败！\n");
+        free(turnovers);
+        free(ward_arr);
         free_wards(w_head);
         if (h_head)
             free_hospitalizations(h_head);
@@ -532,118 +520,214 @@ void analytics_ward_utilization(void)
         return;
     }
 
-    /* 初始化空床率统计 */
-    idx = 0;
-    for (Ward *w = w_head; w; w = w->next, idx++)
+    for (int i = 0; i < ward_count; i++)
     {
-        strncpy(empties[idx].name, w->name, MAX_NAME_LEN - 1);
-        empties[idx].capacity = w->capacity;
-        empties[idx].occupied = w->occupied;
-        empties[idx].empty_rate = (w->capacity > 0) ? (float)(w->capacity - w->occupied) / w->capacity : 0.0f;
+        strncpy(empties[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1);
+        empties[i].name[MAX_NAME_LEN - 1] = '\0';
+        empties[i].capacity = ward_arr[i]->capacity;
+        empties[i].occupied = ward_arr[i]->occupied;
+        empties[i].empty_rate = (ward_arr[i]->capacity > 0)
+                                    ? (float)(ward_arr[i]->capacity - ward_arr[i]->occupied) / ward_arr[i]->capacity
+                                    : 0.0f;
     }
 
-    /* 按空床率降序排序 */
     qsort(empties, ward_count, sizeof(WardEmptyStats), compare_ward_empty_desc);
 
-    /* 计算空床率表格列宽 */
     int r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w;
     calc_ward_empty_width(empties, ward_count, &r_rank_w, &r_name_w, &r_empty_w, &r_rate_w, &r_bar_w);
 
-    /* 打印空床率表头 */
-    print_ward_empty_header(r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
-
-    /* 打印空床率数据行 */
-    for (int i = 0; i < ward_count; i++)
+    /* ===== 预计算：第四部分 历史平均住院天数 ===== */
+    WardStayStats *stays = (WardStayStats *)calloc(ward_count, sizeof(WardStayStats));
+    if (!stays)
     {
-        print_ward_empty_line(&empties[i], i + 1, r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
+        printf("内存分配失败！\n");
+        free(empties);
+        free(turnovers);
+        free(ward_arr);
+        free_wards(w_head);
+        if (h_head)
+            free_hospitalizations(h_head);
+        wait_enter();
+        return;
     }
 
-    /* 打印空床率分隔线 */
-    print_ward_empty_line_separator(r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
+    for (int i = 0; i < ward_count; i++)
+    {
+        strncpy(stays[i].ward_id, ward_arr[i]->ward_id, MAX_ID_LEN - 1);
+        stays[i].ward_id[MAX_ID_LEN - 1] = '\0';
+        strncpy(stays[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1);
+        stays[i].name[MAX_NAME_LEN - 1] = '\0';
+        stays[i].total_days = 0;
+        stays[i].discharged_count = 0;
+        stays[i].avg_days = 0.0f;
+    }
 
-    free(empties);
-
-    /* ===== 第四部分: 各病房历史平均住院天数 ===== */
     if (h_head)
     {
-        printf("\n===== 各病房历史平均住院天数 =====\n");
-
-        /* 分配住院天数统计数组 */
-        WardStayStats *stays = (WardStayStats *)calloc(ward_count, sizeof(WardStayStats));
-        if (stays)
+        for (Hospitalization *h = h_head; h; h = h->next)
         {
-            /* 初始化住院天数统计 */
-            idx = 0;
-            for (Ward *w = w_head; w; w = w->next, idx++)
+            if (h->status == HOSP_STATUS_DISCHARGED && h->discharge_date > h->admit_date)
             {
-                strncpy(stays[idx].ward_id, w->ward_id, MAX_ID_LEN - 1);
-                strncpy(stays[idx].name, w->name, MAX_NAME_LEN - 1);
-                stays[idx].total_days = 0;
-                stays[idx].discharged_count = 0;
-                stays[idx].avg_days = 0.0f;
-            }
+                int days = (int)((h->discharge_date - h->admit_date) / ANALYTICS_SECONDS_PER_DAY);
+                if (days < 1)
+                    days = 1;
 
-            /* 统计各病房住院天数 */
-            for (Hospitalization *h = h_head; h; h = h->next)
-            {
-                if (h->status == HOSP_STATUS_DISCHARGED && h->discharge_date > h->admit_date)
+                for (int i = 0; i < ward_count; i++)
                 {
-                    int days = (int)((h->discharge_date - h->admit_date) / ANALYTICS_SECONDS_PER_DAY);
-                    if (days < 1)
-                        days = 1;
-                    for (int i = 0; i < ward_count; i++)
+                    if (strcmp(stays[i].ward_id, h->ward_id) == 0)
                     {
-                        if (strcmp(stays[i].ward_id, h->ward_id) == 0)
-                        {
-                            stays[i].total_days += days;
-                            stays[i].discharged_count++;
-                            break;
-                        }
+                        stays[i].total_days += days;
+                        stays[i].discharged_count++;
+                        break;
                     }
                 }
             }
+        }
+    }
 
-            /* 计算平均住院天数 */
-            float max_avg = 0.0f;
-            for (int i = 0; i < ward_count; i++)
-            {
-                if (stays[i].discharged_count > 0)
-                {
-                    stays[i].avg_days = (float)stays[i].total_days / stays[i].discharged_count;
-                    if (stays[i].avg_days > max_avg)
-                        max_avg = stays[i].avg_days;
-                }
-            }
+    float max_avg = 0.0f;
+    for (int i = 0; i < ward_count; i++)
+    {
+        if (stays[i].discharged_count > 0)
+        {
+            stays[i].avg_days = (float)stays[i].total_days / stays[i].discharged_count;
+            if (stays[i].avg_days > max_avg)
+                max_avg = stays[i].avg_days;
+        }
+    }
+    int max_int = (int)(max_avg + 0.5f);
+    if (max_int < 1)
+        max_int = 1;
 
-            /* 计算住院天数表格列宽 */
-            int s_name_w, s_cnt_w, s_avg_w, s_bar_w;
-            calc_ward_stay_width(stays, ward_count, &s_name_w, &s_cnt_w, &s_avg_w, &s_bar_w);
+    int s_name_w, s_cnt_w, s_avg_w, s_bar_w;
+    calc_ward_stay_width(stays, ward_count, &s_name_w, &s_cnt_w, &s_avg_w, &s_bar_w);
 
-            /* 打印住院天数表头 */
+    /* ===== 分类分页交互 ===== */
+    const char *sec_names[SEC_COUNT] = {"病房利用率总览", "病房周转率统计", "空床率排名（从高到低）",
+                                        "各病房历史平均住院天数"};
+
+    int sec_totals[SEC_COUNT] = {ward_count, ward_count, ward_count, ward_count};
+
+    int cur_sec = 0;
+    int cur_page = 1;
+
+    while (1)
+    {
+        clear_screen();
+
+        int total = sec_totals[cur_sec];
+        int total_pages = total > 0 ? (total + PAGE_SIZE - 1) / PAGE_SIZE : 1;
+        if (cur_page > total_pages)
+            cur_page = total_pages;
+
+        int start = (cur_page - 1) * PAGE_SIZE;
+        int end = start + PAGE_SIZE;
+        if (end > total)
+            end = total;
+
+        printf("===== %s (第 %d/%d 页，共 %d 条) =====\n", sec_names[cur_sec], cur_page, total_pages, total);
+
+        switch (cur_sec)
+        {
+        case 0: {
+            print_ward_utilization_header(name_w, cap_w, occ_w, rate_w, bar_w);
+
+            for (int i = start; i < end; i++)
+                print_ward_utilization_line(ward_arr[i], name_w, cap_w, occ_w, rate_w, bar_w);
+
+            print_ward_utilization_line_separator(name_w, cap_w, occ_w, rate_w, bar_w);
+            printf("全院综合利用率: %s %.1f%%  (%d/%d)\n", total_bar, total_ratio * 100.0f, total_occupied,
+                   total_capacity);
+            break;
+        }
+        case 1: {
+            print_ward_turnover_header(t_name_w, t_dis_w, t_turn_w);
+
+            for (int i = start; i < end; i++)
+                print_ward_turnover_line(&turnovers[i], t_name_w, t_dis_w, t_turn_w);
+
+            int t_widths[] = {t_name_w, t_dis_w, t_turn_w};
+            print_analytics_line(3, t_widths);
+            break;
+        }
+        case 2: {
+            print_ward_empty_header(r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
+
+            for (int i = start; i < end; i++)
+                print_ward_empty_line(&empties[i], i + 1, r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
+
+            print_ward_empty_line_separator(r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
+            break;
+        }
+        case 3: {
             print_ward_stay_header(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
 
-            /* 打印住院天数数据行 */
-            int max_int = (int)(max_avg + 0.5f);
-            if (max_int < 1)
-                max_int = 1;
-
-            for (int i = 0; i < ward_count; i++)
-            {
+            for (int i = start; i < end; i++)
                 print_ward_stay_line(&stays[i], max_int, s_name_w, s_cnt_w, s_avg_w, s_bar_w);
-            }
 
-            /* 打印住院天数分隔线 */
             print_ward_stay_line_separator(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
+            break;
+        }
+        }
 
-            free(stays);
+        printf("\n当前类: ");
+        for (int i = 0; i < SEC_COUNT; i++)
+            printf(i == cur_sec ? "[%s] " : " %s  ", sec_names[i]);
+
+        printf("\n[n]下一页  [p]上一页  [nn]下一类  [pp]上一类  [q]退出\n> ");
+
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (cur_page < total_pages)
+                cur_page++;
+        }
+        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (cur_page > 1)
+                cur_page--;
+        }
+        else if (strcmp(buf, "nn") == 0 || strcmp(buf, "NN") == 0)
+        {
+            if (cur_sec < SEC_COUNT - 1)
+            {
+                cur_sec++;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "pp") == 0 || strcmp(buf, "PP") == 0)
+        {
+            if (cur_sec > 0)
+            {
+                cur_sec--;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+        {
+            break;
+        }
+        else
+        {
+            printf("输入无效，请重新输入！\n");
+            wait_enter();
         }
     }
 
     /* 释放资源 */
+    free(stays);
+    free(empties);
+    free(turnovers);
+    free(ward_arr);
     free_wards(w_head);
     if (h_head)
         free_hospitalizations(h_head);
+
     wait_enter();
+
+#undef SEC_COUNT
 }
 
 /*
@@ -879,6 +963,8 @@ static void print_doctor_visit_line(DoctorVisitStats *stat, int rank, int max_vi
  */
 void analytics_department_workload(void)
 {
+#define SEC_COUNT 2
+
     clear_screen();
 
     /* 加载数据 */
@@ -906,10 +992,9 @@ void analytics_department_workload(void)
         return;
     }
 
-    /* ===== 第一部分: 科室门诊量统计 ===== */
-    printf("===== 科室门诊量统计 =====\n");
+    /* ===== 第一部分预计算：科室门诊量统计 ===== */
 
-    /* 收集所有科室名称（从医生链表去重） */
+    /* 收集科室（去重） */
     char dept_names[ANALYTICS_MAX_DEPT_COUNT][MAX_NAME_LEN];
     int dept_count = 0;
 
@@ -932,7 +1017,6 @@ void analytics_department_workload(void)
         }
     }
 
-    /* 分配科室统计数组 */
     DeptWorkloadStats *dept_stats = (DeptWorkloadStats *)calloc(dept_count, sizeof(DeptWorkloadStats));
     if (!dept_stats)
     {
@@ -945,26 +1029,22 @@ void analytics_department_workload(void)
         return;
     }
 
-    /* 初始化科室统计 */
     for (int i = 0; i < dept_count; i++)
     {
         strncpy(dept_stats[i].name, dept_names[i], MAX_NAME_LEN - 1);
+        dept_stats[i].name[MAX_NAME_LEN - 1] = '\0';
     }
 
-    /* 计算趋势对比的时间窗口: 最近N天 vs 前N天 */
     time_t now = time(NULL);
     time_t t_recent_start = now - (time_t)ANALYTICS_TREND_WINDOW_DAYS * ANALYTICS_SECONDS_PER_DAY;
     time_t t_prev_start = now - (time_t)(2 * ANALYTICS_TREND_WINDOW_DAYS) * ANALYTICS_SECONDS_PER_DAY;
 
-    /* 遍历挂号记录，按科室分桶统计 */
     for (Registration *r = r_head; r; r = r->next)
     {
-        /* 通过 d_id 关联 Doctor 获取科室 */
         Doctor *doc = find_doctor_by_d_id(d_head, r->d_id);
         if (!doc)
             continue;
 
-        /* 找到对应科室 */
         int dept_idx = -1;
         for (int i = 0; i < dept_count; i++)
         {
@@ -977,7 +1057,6 @@ void analytics_department_workload(void)
         if (dept_idx < 0)
             continue;
 
-        /* 总量统计 */
         dept_stats[dept_idx].total++;
 
         if (r->status == REG_STATUS_DONE)
@@ -985,62 +1064,38 @@ void analytics_department_workload(void)
         else if (r->status == REG_STATUS_CANCELED)
             dept_stats[dept_idx].canceled++;
 
-        /* 时间窗口统计: 落入最近N天窗口 -> recent; 落入前N天窗口 -> prev */
         if (r->when >= t_recent_start)
             dept_stats[dept_idx].recent_30d++;
         else if (r->when >= t_prev_start)
             dept_stats[dept_idx].prev_30d++;
     }
 
-    /* 计算取消率和趋势 */
     for (int i = 0; i < dept_count; i++)
     {
         dept_stats[i].cancel_rate =
             (dept_stats[i].total > 0) ? (float)dept_stats[i].canceled / dept_stats[i].total * 100.0f : 0.0f;
 
         if (dept_stats[i].prev_30d > 0)
-        {
             dept_stats[i].trend_pct =
                 (float)(dept_stats[i].recent_30d - dept_stats[i].prev_30d) / dept_stats[i].prev_30d * 100.0f;
-        }
         else
-        {
             dept_stats[i].trend_pct = 0.0f;
-        }
     }
 
-    /* 计算列宽 */
     int dept_w, total_w, done_w, cancel_w, rate_w, trend_w;
     calc_dept_workload_width(dept_stats, dept_count, &dept_w, &total_w, &done_w, &cancel_w, &rate_w, &trend_w);
 
-    /* 打印表头 */
-    print_dept_workload_header(dept_w, total_w, done_w, cancel_w, rate_w, trend_w);
+    /* ===== 第二部分预计算：医生接诊量 Top N ===== */
 
-    /* 打印数据行 */
-    for (int i = 0; i < dept_count; i++)
-    {
-        print_dept_workload_line(&dept_stats[i], dept_w, total_w, done_w, cancel_w, rate_w, trend_w);
-    }
-
-    /* 打印分隔线 */
-    int d_widths[] = {dept_w, total_w, done_w, cancel_w, rate_w, trend_w};
-    print_analytics_line(6, d_widths);
-
-    free(dept_stats);
-
-    /* ===== 第二部分: 医生接诊量 Top 5 ===== */
-    printf("\n===== 医生接诊量 Top 5 =====\n");
-
-    /* 统计医生数量 */
     int doc_count = 0;
     for (Doctor *doc = d_head; doc; doc = doc->next)
         doc_count++;
 
-    /* 分配医生接诊量统计数组 */
     DoctorVisitStats *doc_stats = (DoctorVisitStats *)calloc(doc_count, sizeof(DoctorVisitStats));
     if (!doc_stats)
     {
         printf("内存分配失败！\n");
+        free(dept_stats);
         free_registrations(r_head);
         free_doctors(d_head);
         if (v_head)
@@ -1049,17 +1104,18 @@ void analytics_department_workload(void)
         return;
     }
 
-    /* 初始化医生统计 */
     int idx = 0;
     for (Doctor *doc = d_head; doc; doc = doc->next, idx++)
     {
         strncpy(doc_stats[idx].d_id, doc->id, MAX_ID_LEN - 1);
+        doc_stats[idx].d_id[MAX_ID_LEN - 1] = '\0';
         strncpy(doc_stats[idx].name, doc->name, MAX_NAME_LEN - 1);
+        doc_stats[idx].name[MAX_NAME_LEN - 1] = '\0';
         strncpy(doc_stats[idx].department, doc->department, MAX_NAME_LEN - 1);
+        doc_stats[idx].department[MAX_NAME_LEN - 1] = '\0';
         doc_stats[idx].visit_count = 0;
     }
 
-    /* 遍历看诊记录统计接诊量（已完成的看诊） */
     if (v_head)
     {
         for (Visit *v = v_head; v; v = v->next)
@@ -1067,12 +1123,10 @@ void analytics_department_workload(void)
             if (v->status != VISIT_STATUS_DONE)
                 continue;
 
-            /* 通过 reg_id 找到挂号记录，获取 d_id */
             Registration *reg = find_registration_by_r_id(r_head, v->reg_id);
             if (!reg)
                 continue;
 
-            /* 在医生统计数组中找到对应医生 */
             for (int i = 0; i < doc_count; i++)
             {
                 if (strcmp(doc_stats[i].d_id, reg->d_id) == 0)
@@ -1084,39 +1138,132 @@ void analytics_department_workload(void)
         }
     }
 
-    /* 按接诊量降序排序 */
     qsort(doc_stats, doc_count, sizeof(DoctorVisitStats), compare_doctor_visit_desc);
 
-    /* 取 Top DOCTOR_TOP_N */
     int top_n = (doc_count < ANALYTICS_DOCTOR_TOP_N) ? doc_count : ANALYTICS_DOCTOR_TOP_N;
     int max_visits = (top_n > 0) ? doc_stats[0].visit_count : 1;
     if (max_visits < 1)
         max_visits = 1;
 
-    /* 计算列宽 */
     int r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w;
     calc_doctor_visit_width(doc_stats, top_n, max_visits, &r_rank_w, &r_id_w, &r_dept_w, &r_cnt_w, &r_bar_w);
 
-    /* 打印表头 */
-    print_doctor_visit_header(r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w);
+    /* ===== 分类分页交互 ===== */
 
-    /* 打印数据行 */
-    for (int i = 0; i < top_n; i++)
+    const char *sec_names[SEC_COUNT] = {"科室门诊量统计", "医生接诊量 Top 5"};
+    int sec_totals[SEC_COUNT] = {dept_count, top_n};
+
+    int cur_sec = 0;
+    int cur_page = 1;
+
+    while (1)
     {
-        print_doctor_visit_line(&doc_stats[i], i + 1, max_visits, r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w);
-    }
+        clear_screen();
 
-    /* 打印分隔线 */
-    int r_widths[] = {r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w};
-    print_analytics_line(5, r_widths);
+        int total = sec_totals[cur_sec];
+        int total_pages = total > 0 ? (total + PAGE_SIZE - 1) / PAGE_SIZE : 1;
+        if (cur_page > total_pages)
+            cur_page = total_pages;
+
+        int start = (cur_page - 1) * PAGE_SIZE;
+        int end = start + PAGE_SIZE;
+        if (end > total)
+            end = total;
+
+        printf("===== %s (第 %d/%d 页，共 %d 条) =====\n", sec_names[cur_sec], cur_page, total_pages, total);
+
+        switch (cur_sec)
+        {
+        case 0: {
+            if (total == 0)
+            {
+                printf("\n暂无科室数据！\n");
+                break;
+            }
+
+            print_dept_workload_header(dept_w, total_w, done_w, cancel_w, rate_w, trend_w);
+            for (int i = start; i < end; i++)
+                print_dept_workload_line(&dept_stats[i], dept_w, total_w, done_w, cancel_w, rate_w, trend_w);
+
+            int d_widths[] = {dept_w, total_w, done_w, cancel_w, rate_w, trend_w};
+            print_analytics_line(6, d_widths);
+            break;
+        }
+
+        case 1: {
+            if (total == 0)
+            {
+                printf("\n暂无医生接诊数据！\n");
+                break;
+            }
+
+            print_doctor_visit_header(r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w);
+            for (int i = start; i < end; i++)
+                print_doctor_visit_line(&doc_stats[i], i + 1, max_visits, r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w);
+
+            int r_widths[] = {r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w};
+            print_analytics_line(5, r_widths);
+            break;
+        }
+        }
+
+        printf("\n当前类: ");
+        for (int i = 0; i < SEC_COUNT; i++)
+            printf(i == cur_sec ? "[%s] " : " %s  ", sec_names[i]);
+
+        printf("\n[n]下一页  [p]上一页  [nn]下一类  [pp]上一类  [q]退出\n> ");
+
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (cur_page < total_pages)
+                cur_page++;
+        }
+        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (cur_page > 1)
+                cur_page--;
+        }
+        else if (strcmp(buf, "nn") == 0 || strcmp(buf, "NN") == 0)
+        {
+            if (cur_sec < SEC_COUNT - 1)
+            {
+                cur_sec++;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "pp") == 0 || strcmp(buf, "PP") == 0)
+        {
+            if (cur_sec > 0)
+            {
+                cur_sec--;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+        {
+            break;
+        }
+        else
+        {
+            printf("输入无效，请重新输入！\n");
+            wait_enter();
+        }
+    }
 
     /* 释放资源 */
     free(doc_stats);
+    free(dept_stats);
     free_registrations(r_head);
     free_doctors(d_head);
     if (v_head)
         free_visits(v_head);
+
     wait_enter();
+
+#undef SEC_COUNT
 }
 
 /*
@@ -1316,6 +1463,8 @@ static void print_dept_ward_matrix_row(DeptWardMatrixRow *row, int dept_w, Ward 
  */
 void analytics_ward_optimization(void)
 {
+#define SEC_COUNT 3
+
     clear_screen();
 
     Hospitalization *h_head = load_hospitalizations_from_file();
@@ -1341,6 +1490,7 @@ void analytics_ward_optimization(void)
         return;
     }
 
+    /* ward_count / dept_count */
     int ward_count = 0;
     for (Ward *w = w_head; w; w = w->next)
         ward_count++;
@@ -1366,9 +1516,7 @@ void analytics_ward_optimization(void)
         }
     }
 
-    /* ===== 第一部分: 病房住院统计 ===== */
-    printf("===== 病房住院统计 =====\n");
-
+    /* ===== 第一部分预计算：病房住院统计 ===== */
     WardHospStats *ward_stats = (WardHospStats *)calloc(ward_count, sizeof(WardHospStats));
     if (!ward_stats)
     {
@@ -1386,7 +1534,9 @@ void analytics_ward_optimization(void)
     for (Ward *w = w_head; w; w = w->next, ward_idx++)
     {
         strncpy(ward_stats[ward_idx].ward_id, w->ward_id, MAX_ID_LEN - 1);
+        ward_stats[ward_idx].ward_id[MAX_ID_LEN - 1] = '\0';
         strncpy(ward_stats[ward_idx].name, w->name, MAX_NAME_LEN - 1);
+        ward_stats[ward_idx].name[MAX_NAME_LEN - 1] = '\0';
         ward_stats[ward_idx].capacity = w->capacity;
         ward_stats[ward_idx].min_days = 0;
         ward_stats[ward_idx].max_days = 0;
@@ -1430,15 +1580,8 @@ void analytics_ward_optimization(void)
 
     int name_w, admit_w, current_w, avg_w, min_w, max_w;
     calc_ward_hosp_stats_width(ward_stats, ward_count, &name_w, &admit_w, &current_w, &avg_w, &min_w, &max_w);
-    print_ward_hosp_stats_header(name_w, admit_w, current_w, avg_w, min_w, max_w);
-    for (int i = 0; i < ward_count; i++)
-        print_ward_hosp_stats_line(&ward_stats[i], name_w, admit_w, current_w, avg_w, min_w, max_w);
-    int hosp_widths[] = {name_w, admit_w, current_w, avg_w, min_w, max_w};
-    print_analytics_line(6, hosp_widths);
 
-    /* ===== 第二部分: 科室-病房住院人次分布 ===== */
-    printf("\n===== 科室-病房 住院人次分布 =====\n");
-
+    /* ===== 第二部分预计算：科室-病房矩阵 ===== */
     DeptWardMatrixRow *matrix_rows = (DeptWardMatrixRow *)calloc(dept_count, sizeof(DeptWardMatrixRow));
     if (!matrix_rows)
     {
@@ -1454,7 +1597,10 @@ void analytics_ward_optimization(void)
     }
 
     for (int i = 0; i < dept_count; i++)
+    {
         strncpy(matrix_rows[i].dept_name, dept_names[i], MAX_NAME_LEN - 1);
+        matrix_rows[i].dept_name[MAX_NAME_LEN - 1] = '\0';
+    }
 
     for (Hospitalization *h = h_head; h; h = h->next)
     {
@@ -1494,15 +1640,8 @@ void analytics_ward_optimization(void)
     int dept_w;
     int ward_widths[ANALYTICS_MAX_WARD_COUNT] = {0};
     calc_dept_ward_matrix_width(matrix_rows, dept_count, w_head, &dept_w, ward_widths);
-    print_dept_ward_matrix_header(dept_w, w_head, ward_widths);
-    for (int i = 0; i < dept_count; i++)
-        print_dept_ward_matrix_row(&matrix_rows[i], dept_w, w_head, ward_widths);
-    print_dept_ward_matrix_line(dept_w, w_head, ward_widths);
 
-    /* ===== 第三部分: 病房优化建议 ===== */
-    printf("\n===== 病房优化建议 =====\n");
-
-    int suggestion_no = 1;
+    /* ===== 第三部分预计算：优化建议（先生成字符串数组，便于分页） ===== */
     int total_demand = 0;
     for (int i = 0; i < ward_count; i++)
         total_demand += ward_stats[i].total_admit + ward_stats[i].current_in;
@@ -1511,62 +1650,191 @@ void analytics_ward_optimization(void)
     for (Ward *w = w_head; w; w = w->next)
         total_capacity += w->capacity;
 
-    for (int d = 0; d < dept_count; d++)
+    /* 每条建议最多两行正文，按较宽上限开辟 */
+    int sug_cap = ANALYTICS_MAX_DEPT_COUNT + ANALYTICS_MAX_WARD_COUNT + ANALYTICS_MAX_WARD_COUNT + 4;
+    char (*suggestions)[256] = (char (*)[256])calloc(sug_cap, sizeof(*suggestions));
+    int sug_count = 0;
+
+    if (suggestions)
     {
-        int dept_demand = 0;
-        int dept_primary_beds = 0;
-
-        for (int w = 0; w < ward_count; w++)
-            dept_demand += matrix_rows[d].counts[w];
-
-        for (int w = 0; w < ward_count; w++)
+        for (int d = 0; d < dept_count; d++)
         {
-            if (strstr(ward_stats[w].name, matrix_rows[d].dept_name) != NULL)
-                dept_primary_beds += ward_stats[w].capacity;
-        }
+            int dept_demand = 0;
+            int dept_primary_beds = 0;
 
-        float demand_ratio = (total_demand > 0) ? (float)dept_demand / total_demand : 0.0f;
-        float bed_ratio = (total_capacity > 0) ? (float)dept_primary_beds / total_capacity : 0.0f;
+            for (int w = 0; w < ward_count; w++)
+                dept_demand += matrix_rows[d].counts[w];
 
-        if (dept_demand > 0 && demand_ratio - bed_ratio > ANALYTICS_DEMAND_BED_GAP)
-        {
-            printf("  [%d] %s住院需求占比 %.0f%%，关联床位占比 %.0f%%\n", suggestion_no++, matrix_rows[d].dept_name,
-                   demand_ratio * 100.0f, bed_ratio * 100.0f);
-            printf("      -> 建议: 优先为%s关联病房扩容或预留更多弹性床位\n", matrix_rows[d].dept_name);
-        }
-    }
-
-    for (int i = 0; i < ward_count; i++)
-    {
-        if (ward_stats[i].utilization_rate < ANALYTICS_LOW_UTIL_THRESHOLD)
-        {
-            printf("  [%d] %s当前利用率仅 %.1f%%\n", suggestion_no++, ward_stats[i].name,
-                   ward_stats[i].utilization_rate * 100.0f);
-            printf("      -> 建议: 评估缩减床位或与相邻病区合并管理\n");
-        }
-    }
-
-    for (int i = 0; i < ward_count; i++)
-    {
-        if (strstr(ward_stats[i].name, "综合") != NULL)
-        {
-            int used_dept = 0;
-            for (int d = 0; d < dept_count; d++)
+            for (int w = 0; w < ward_count; w++)
             {
-                if (matrix_rows[d].counts[i] > 0)
-                    used_dept++;
+                if (strstr(ward_stats[w].name, matrix_rows[d].dept_name) != NULL)
+                    dept_primary_beds += ward_stats[w].capacity;
             }
-            if (used_dept >= ANALYTICS_MULTI_DEPT_THRESHOLD)
+
+            float demand_ratio = (total_demand > 0) ? (float)dept_demand / total_demand : 0.0f;
+            float bed_ratio = (total_capacity > 0) ? (float)dept_primary_beds / total_capacity : 0.0f;
+
+            if (dept_demand > 0 && demand_ratio - bed_ratio > ANALYTICS_DEMAND_BED_GAP && sug_count + 2 <= sug_cap)
             {
-                printf("  [%d] %s被 %d 个科室共同使用\n", suggestion_no++, ward_stats[i].name, used_dept);
-                printf("      -> 建议: 保持弹性分配，作为全院溢出缓冲病区\n");
+                snprintf(suggestions[sug_count++], 256, "%s住院需求占比 %.0f%%，关联床位占比 %.0f%%",
+                         matrix_rows[d].dept_name, demand_ratio * 100.0f, bed_ratio * 100.0f);
+                snprintf(suggestions[sug_count++], 256, "-> 建议: 优先为%s关联病房扩容或预留更多弹性床位",
+                         matrix_rows[d].dept_name);
             }
         }
+
+        for (int i = 0; i < ward_count; i++)
+        {
+            if (ward_stats[i].utilization_rate < ANALYTICS_LOW_UTIL_THRESHOLD && sug_count + 2 <= sug_cap)
+            {
+                snprintf(suggestions[sug_count++], 256, "%s当前利用率仅 %.1f%%", ward_stats[i].name,
+                         ward_stats[i].utilization_rate * 100.0f);
+                snprintf(suggestions[sug_count++], 256, "-> 建议: 评估缩减床位或与相邻病区合并管理");
+            }
+        }
+
+        for (int i = 0; i < ward_count; i++)
+        {
+            if (strstr(ward_stats[i].name, "综合") != NULL)
+            {
+                int used_dept = 0;
+                for (int d = 0; d < dept_count; d++)
+                {
+                    if (matrix_rows[d].counts[i] > 0)
+                        used_dept++;
+                }
+                if (used_dept >= ANALYTICS_MULTI_DEPT_THRESHOLD && sug_count + 2 <= sug_cap)
+                {
+                    snprintf(suggestions[sug_count++], 256, "%s被 %d 个科室共同使用", ward_stats[i].name, used_dept);
+                    snprintf(suggestions[sug_count++], 256, "-> 建议: 保持弹性分配，作为全院溢出缓冲病区");
+                }
+            }
+        }
+
+        if (sug_count == 0 && sug_cap > 0)
+            snprintf(suggestions[sug_count++], 256, "当前病房资源配置整体较均衡，暂未发现明显扩缩容建议。");
     }
 
-    if (suggestion_no == 1)
-        printf("  当前病房资源配置整体较均衡，暂未发现明显扩缩容建议。\n");
+    /* ===== 分类分页交互 ===== */
+    const char *sec_names[SEC_COUNT] = {"病房住院统计", "科室-病房 住院人次分布", "病房优化建议"};
 
+    int sec_totals[SEC_COUNT];
+    sec_totals[0] = ward_count;
+    sec_totals[1] = dept_count;
+    sec_totals[2] = suggestions ? sug_count : 0;
+
+    int cur_sec = 0;
+    int cur_page = 1;
+
+    while (1)
+    {
+        clear_screen();
+
+        int total = sec_totals[cur_sec];
+        int total_pages = total > 0 ? (total + PAGE_SIZE - 1) / PAGE_SIZE : 1;
+        if (cur_page > total_pages)
+            cur_page = total_pages;
+
+        int start = (cur_page - 1) * PAGE_SIZE;
+        int end = start + PAGE_SIZE;
+        if (end > total)
+            end = total;
+
+        printf("===== %s (第 %d/%d 页，共 %d 条) =====\n", sec_names[cur_sec], cur_page, total_pages, total);
+
+        switch (cur_sec)
+        {
+        case 0: {
+            if (total == 0)
+            {
+                printf("\n暂无病房住院统计数据！\n");
+                break;
+            }
+
+            print_ward_hosp_stats_header(name_w, admit_w, current_w, avg_w, min_w, max_w);
+            for (int i = start; i < end; i++)
+                print_ward_hosp_stats_line(&ward_stats[i], name_w, admit_w, current_w, avg_w, min_w, max_w);
+            int hosp_widths[] = {name_w, admit_w, current_w, avg_w, min_w, max_w};
+            print_analytics_line(6, hosp_widths);
+            break;
+        }
+
+        case 1: {
+            if (total == 0)
+            {
+                printf("\n暂无科室-病房分布数据！\n");
+                break;
+            }
+
+            /* 矩阵表头固定；按页输出行 */
+            print_dept_ward_matrix_header(dept_w, w_head, ward_widths);
+            for (int i = start; i < end; i++)
+                print_dept_ward_matrix_row(&matrix_rows[i], dept_w, w_head, ward_widths);
+            print_dept_ward_matrix_line(dept_w, w_head, ward_widths);
+            break;
+        }
+
+        case 2: {
+            if (total == 0 || !suggestions)
+            {
+                printf("\n暂无优化建议数据！\n");
+                break;
+            }
+
+            for (int i = start; i < end; i++)
+                printf("  [%d] %s\n", i + 1, suggestions[i]);
+            break;
+        }
+        }
+
+        printf("\n当前类: ");
+        for (int i = 0; i < SEC_COUNT; i++)
+            printf(i == cur_sec ? "[%s] " : " %s  ", sec_names[i]);
+
+        printf("\n[n]下一页  [p]上一页  [nn]下一类  [pp]上一类  [q]退出\n> ");
+
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (cur_page < total_pages)
+                cur_page++;
+        }
+        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (cur_page > 1)
+                cur_page--;
+        }
+        else if (strcmp(buf, "nn") == 0 || strcmp(buf, "NN") == 0)
+        {
+            if (cur_sec < SEC_COUNT - 1)
+            {
+                cur_sec++;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "pp") == 0 || strcmp(buf, "PP") == 0)
+        {
+            if (cur_sec > 0)
+            {
+                cur_sec--;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+        {
+            break;
+        }
+        else
+        {
+            printf("输入无效，请重新输入！\n");
+            wait_enter();
+        }
+    }
+
+    if (suggestions)
+        free(suggestions);
     free(matrix_rows);
     free(ward_stats);
     free_hospitalizations(h_head);
@@ -1574,7 +1842,10 @@ void analytics_ward_optimization(void)
     free_registrations(r_head);
     free_doctors(d_head);
     free_wards(w_head);
+
     wait_enter();
+
+#undef SEC_COUNT
 }
 
 /*
@@ -1819,6 +2090,8 @@ static void print_stock_warn_line(DrugStockWarnStats *stat, int name_w, int stoc
  */
 void analytics_drug_usage(void)
 {
+#define SEC_COUNT 3
+
     clear_screen();
 
     Prescription *pr_head = load_prescriptions_from_file();
@@ -1845,9 +2118,7 @@ void analytics_drug_usage(void)
         return;
     }
 
-    /* ===== 第一部分: 药品使用排行 Top 10 ===== */
-    printf("===== 药品使用排行 Top 10 =====\n");
-
+    /* ===== 第一部分预计算：药品使用排行 ===== */
     int drug_count = 0;
     for (Drug *d = drug_head; d; d = d->next)
         drug_count++;
@@ -1868,7 +2139,9 @@ void analytics_drug_usage(void)
     for (Drug *d = drug_head; d; d = d->next, idx++)
     {
         strncpy(drug_stats[idx].drug_id, d->id, MAX_ID_LEN - 1);
+        drug_stats[idx].drug_id[MAX_ID_LEN - 1] = '\0';
         strncpy(drug_stats[idx].name, d->trade_name, MAX_NAME_LEN - 1);
+        drug_stats[idx].name[MAX_NAME_LEN - 1] = '\0';
         drug_stats[idx].price = d->price;
         drug_stats[idx].stock = d->stock;
     }
@@ -1896,17 +2169,11 @@ void analytics_drug_usage(void)
 
     int rank_w, dname_w, cnt_w, pct_w, bar_w;
     calc_drug_rank_width(drug_stats, top_n, total_pr, &rank_w, &dname_w, &cnt_w, &pct_w, &bar_w);
-    print_drug_rank_header(rank_w, dname_w, cnt_w, pct_w, bar_w);
-    for (int i = 0; i < top_n; i++)
-        print_drug_rank_line(&drug_stats[i], i + 1, max_count, total_pr, rank_w, dname_w, cnt_w, pct_w, bar_w);
-    int rank_widths[] = {rank_w, dname_w, cnt_w, pct_w, bar_w};
-    print_analytics_line(5, rank_widths);
 
-    /* ===== 第二部分: 科室用药金额估算 ===== */
-    printf("\n===== 科室用药金额估算 =====\n");
-
+    /* ===== 第二部分预计算：科室用药金额 ===== */
     char dept_names[ANALYTICS_MAX_DEPT_COUNT][MAX_NAME_LEN];
     int dept_count = 0;
+
     if (d_head)
     {
         for (Doctor *doc = d_head; doc; doc = doc->next)
@@ -1930,10 +2197,16 @@ void analytics_drug_usage(void)
     }
 
     DeptDrugCostStats *cost_stats = (DeptDrugCostStats *)calloc(dept_count, sizeof(DeptDrugCostStats));
+    int has_cost_stats = 0;
+    int c_dept_w = 0, c_cnt_w = 0, c_cost_w = 0;
+
     if (cost_stats && d_head)
     {
         for (int i = 0; i < dept_count; i++)
+        {
             strncpy(cost_stats[i].dept_name, dept_names[i], MAX_NAME_LEN - 1);
+            cost_stats[i].dept_name[MAX_NAME_LEN - 1] = '\0';
+        }
 
         for (Prescription *pr = pr_head; pr; pr = pr->next)
         {
@@ -1955,62 +2228,177 @@ void analytics_drug_usage(void)
             }
         }
 
-        int dept_w, dcnt_w, dcost_w;
-        calc_dept_drug_cost_width(cost_stats, dept_count, &dept_w, &dcnt_w, &dcost_w);
-        print_dept_drug_cost_header(dept_w, dcnt_w, dcost_w);
-        for (int i = 0; i < dept_count; i++)
-            print_dept_drug_cost_line(&cost_stats[i], dept_w, dcnt_w, dcost_w);
-        int cost_widths[] = {dept_w, dcnt_w, dcost_w};
-        print_analytics_line(3, cost_widths);
-
-        free(cost_stats);
+        calc_dept_drug_cost_width(cost_stats, dept_count, &c_dept_w, &c_cnt_w, &c_cost_w);
+        has_cost_stats = 1;
     }
 
-    /* ===== 第三部分: 库存预警 ===== */
-    printf("\n===== 库存预警 =====\n");
-
-    /* 数据跨度：gen_data.py 生成90天数据，约3个月 */
+    /* ===== 第三部分预计算：库存预警 ===== */
     float data_months = ANALYTICS_DATA_WINDOW_MONTHS;
 
     DrugStockWarnStats *warn_stats = (DrugStockWarnStats *)calloc(drug_count, sizeof(DrugStockWarnStats));
+    int warn_count = 0;
+    int wname_w = 0, wstock_w = 0, wusage_w = 0, wmonths_w = 0, wstatus_w = 0;
+
     if (warn_stats)
     {
+        /* 只保留有处方使用记录的药品（与原打印逻辑一致��� */
         for (int i = 0; i < drug_count; i++)
         {
-            strncpy(warn_stats[i].name, drug_stats[i].name, MAX_NAME_LEN - 1);
-            warn_stats[i].stock = drug_stats[i].stock;
-            warn_stats[i].monthly_usage =
+            if (drug_stats[i].prescription_count <= 0)
+                continue;
+
+            strncpy(warn_stats[warn_count].name, drug_stats[i].name, MAX_NAME_LEN - 1);
+            warn_stats[warn_count].name[MAX_NAME_LEN - 1] = '\0';
+            warn_stats[warn_count].stock = drug_stats[i].stock;
+            warn_stats[warn_count].monthly_usage =
                 (data_months > 0) ? (float)drug_stats[i].prescription_count / data_months : 0.0f;
-            warn_stats[i].months_left =
-                (warn_stats[i].monthly_usage > 0) ? (float)warn_stats[i].stock / warn_stats[i].monthly_usage : 999.0f;
+            warn_stats[warn_count].months_left =
+                (warn_stats[warn_count].monthly_usage > 0)
+                    ? (float)warn_stats[warn_count].stock / warn_stats[warn_count].monthly_usage
+                    : 999.0f;
+            warn_count++;
         }
 
-        int wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w;
-        calc_stock_warn_width(warn_stats, drug_count, &wname_w, &wstock_w, &wusage_w, &wmonths_w, &wstatus_w);
-        print_stock_warn_header(wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w);
-
-        for (int i = 0; i < drug_count; i++)
-        {
-            if (drug_stats[i].prescription_count > 0)
-                print_stock_warn_line(&warn_stats[i], wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w);
-        }
-
-        int warn_widths[] = {wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w};
-        print_analytics_line(5, warn_widths);
-
-        printf("  状态说明: ⚠ 补货 = 可用不足3月需立即补货\n");
-        printf("            ⚠ 关注 = 可用不足6月建议关注\n");
-        printf("            ✓ 正常 = 库存充足\n");
-
-        free(warn_stats);
+        calc_stock_warn_width(warn_stats, warn_count, &wname_w, &wstock_w, &wusage_w, &wmonths_w, &wstatus_w);
     }
 
+    /* ===== 分类分页交互 ===== */
+    const char *sec_names[SEC_COUNT] = {"药品使用排行 Top 10", "科室用药金额估算", "库存预警"};
+    int sec_totals[SEC_COUNT] = {top_n, has_cost_stats ? dept_count : 0, warn_count};
+
+    int cur_sec = 0;
+    int cur_page = 1;
+
+    while (1)
+    {
+        clear_screen();
+
+        int total = sec_totals[cur_sec];
+        int total_pages = total > 0 ? (total + PAGE_SIZE - 1) / PAGE_SIZE : 1;
+        if (cur_page > total_pages)
+            cur_page = total_pages;
+
+        int start = (cur_page - 1) * PAGE_SIZE;
+        int end = start + PAGE_SIZE;
+        if (end > total)
+            end = total;
+
+        printf("===== %s (第 %d/%d 页，共 %d 条) =====\n", sec_names[cur_sec], cur_page, total_pages, total);
+
+        switch (cur_sec)
+        {
+        case 0: {
+            if (total == 0)
+            {
+                printf("\n暂无药品使用数据！\n");
+                break;
+            }
+
+            print_drug_rank_header(rank_w, dname_w, cnt_w, pct_w, bar_w);
+            for (int i = start; i < end; i++)
+                print_drug_rank_line(&drug_stats[i], i + 1, max_count, total_pr, rank_w, dname_w, cnt_w, pct_w, bar_w);
+
+            int rank_widths[] = {rank_w, dname_w, cnt_w, pct_w, bar_w};
+            print_analytics_line(5, rank_widths);
+            break;
+        }
+        case 1: {
+            if (total == 0 || !has_cost_stats)
+            {
+                printf("\n暂无科室用药金额数据！\n");
+                break;
+            }
+
+            print_dept_drug_cost_header(c_dept_w, c_cnt_w, c_cost_w);
+            for (int i = start; i < end; i++)
+                print_dept_drug_cost_line(&cost_stats[i], c_dept_w, c_cnt_w, c_cost_w);
+
+            int cost_widths[] = {c_dept_w, c_cnt_w, c_cost_w};
+            print_analytics_line(3, cost_widths);
+            break;
+        }
+        case 2: {
+            if (total == 0)
+            {
+                printf("\n暂无库存预警数据！\n");
+                break;
+            }
+
+            print_stock_warn_header(wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w);
+            for (int i = start; i < end; i++)
+                print_stock_warn_line(&warn_stats[i], wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w);
+
+            int warn_widths[] = {wname_w, wstock_w, wusage_w, wmonths_w, wstatus_w};
+            print_analytics_line(5, warn_widths);
+
+            printf("  状态说明: ⚠ 补货 = 可用不足3月需立即补货\n");
+            printf("            ⚠ 关注 = 可用不足6月建议关注\n");
+            printf("            ✓ 正常 = 库存充足\n");
+            break;
+        }
+        }
+
+        printf("\n当前类: ");
+        for (int i = 0; i < SEC_COUNT; i++)
+            printf(i == cur_sec ? "[%s] " : " %s  ", sec_names[i]);
+
+        printf("\n[n]下一页  [p]上一页  [nn]下一类  [pp]上一类  [q]退出\n> ");
+
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (cur_page < total_pages)
+                cur_page++;
+        }
+        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (cur_page > 1)
+                cur_page--;
+        }
+        else if (strcmp(buf, "nn") == 0 || strcmp(buf, "NN") == 0)
+        {
+            if (cur_sec < SEC_COUNT - 1)
+            {
+                cur_sec++;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "pp") == 0 || strcmp(buf, "PP") == 0)
+        {
+            if (cur_sec > 0)
+            {
+                cur_sec--;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+        {
+            break;
+        }
+        else
+        {
+            printf("输入无效，请重新输入！\n");
+            wait_enter();
+        }
+    }
+
+    /* 释放资源 */
+    if (warn_stats)
+        free(warn_stats);
+    if (cost_stats)
+        free(cost_stats);
     free(drug_stats);
+
     free_prescriptions(pr_head);
     free_drugs(drug_head);
     if (d_head)
         free_doctors(d_head);
+
     wait_enter();
+
+#undef SEC_COUNT
 }
 
 /*
@@ -2189,6 +2577,8 @@ static void print_inpatient_alert_line(InpatientAlertStats *stat, int pid_w, int
  */
 void analytics_hospitalization_duration(void)
 {
+#define SEC_COUNT 3
+
     clear_screen();
 
     Hospitalization *h_head = load_hospitalizations_from_file();
@@ -2206,9 +2596,7 @@ void analytics_hospitalization_duration(void)
         return;
     }
 
-    /* ===== 第一部分: 住院天数分布（已出院）===== */
-    printf("===== 住院天数分布（已出院）=====\n");
-
+    /* ===== 第一部分预计算：住院天数分布（已出院）===== */
     StayBucketStats buckets[ANALYTICS_STAY_BUCKET_COUNT];
     for (int i = 0; i < ANALYTICS_STAY_BUCKET_COUNT; i++)
     {
@@ -2250,31 +2638,41 @@ void analytics_hospitalization_duration(void)
 
     int label_w, bcnt_w, bbar_w;
     calc_stay_bucket_width(buckets, ANALYTICS_STAY_BUCKET_COUNT, max_bucket, &label_w, &bcnt_w, &bbar_w);
-    print_stay_bucket_header(label_w, bcnt_w, bbar_w);
-    for (int i = 0; i < ANALYTICS_STAY_BUCKET_COUNT; i++)
-        print_stay_bucket_line(&buckets[i], max_bucket, label_w, bcnt_w, bbar_w);
-    int bucket_widths[] = {label_w, bcnt_w, bbar_w};
-    print_analytics_line(3, bucket_widths);
 
     float overall_avg = (total_discharged > 0) ? (float)total_stay_days / total_discharged : 0.0f;
-    printf("  全院平均住院天数: %.1f 天\n", overall_avg);
 
-    /* ===== 第二部分: 分病房平均住院天数 ===== */
-    printf("\n===== 分病房平均住院天数 =====\n");
-
+    /* ===== 第二部分预计算：分病房平均住院天数 ===== */
     int ward_count = 0;
     for (Ward *w = w_head; w; w = w->next)
         ward_count++;
 
-    /* 复用 WardStayStats 结构体 */
-    WardStayStats *ward_stays = (WardStayStats *)calloc(ward_count, sizeof(WardStayStats));
-    if (ward_stays)
+    WardStayStats *ward_stays = NULL;
+    float max_avg = 0.0f;
+    int max_int = 1;
+    int s_name_w = 0, s_cnt_w = 0, s_avg_w = 0, s_bar_w = 0;
+
+    if (ward_count > 0)
     {
+        ward_stays = (WardStayStats *)calloc(ward_count, sizeof(WardStayStats));
+        if (!ward_stays)
+        {
+            printf("内存分配失败！\n");
+            free_hospitalizations(h_head);
+            if (w_head)
+                free_wards(w_head);
+            if (p_head)
+                free_patients(p_head);
+            wait_enter();
+            return;
+        }
+
         int idx = 0;
         for (Ward *w = w_head; w; w = w->next, idx++)
         {
             strncpy(ward_stays[idx].ward_id, w->ward_id, MAX_ID_LEN - 1);
+            ward_stays[idx].ward_id[MAX_ID_LEN - 1] = '\0';
             strncpy(ward_stays[idx].name, w->name, MAX_NAME_LEN - 1);
+            ward_stays[idx].name[MAX_NAME_LEN - 1] = '\0';
         }
 
         for (Hospitalization *h = h_head; h; h = h->next)
@@ -2284,6 +2682,7 @@ void analytics_hospitalization_duration(void)
                 int days = (int)((h->discharge_date - h->admit_date) / ANALYTICS_SECONDS_PER_DAY);
                 if (days < 1)
                     days = 1;
+
                 for (int i = 0; i < ward_count; i++)
                 {
                     if (strcmp(ward_stays[i].ward_id, h->ward_id) == 0)
@@ -2296,7 +2695,6 @@ void analytics_hospitalization_duration(void)
             }
         }
 
-        float max_avg = 0.0f;
         for (int i = 0; i < ward_count; i++)
         {
             if (ward_stays[i].discharged_count > 0)
@@ -2307,99 +2705,215 @@ void analytics_hospitalization_duration(void)
             }
         }
 
-        int s_name_w, s_cnt_w, s_avg_w, s_bar_w;
-        calc_ward_stay_width(ward_stays, ward_count, &s_name_w, &s_cnt_w, &s_avg_w, &s_bar_w);
-        print_ward_stay_header(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
-
-        int max_int = (int)(max_avg + 0.5f);
+        max_int = (int)(max_avg + 0.5f);
         if (max_int < 1)
             max_int = 1;
-        for (int i = 0; i < ward_count; i++)
-            print_ward_stay_line(&ward_stays[i], max_int, s_name_w, s_cnt_w, s_avg_w, s_bar_w);
-        print_ward_stay_line_separator(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
 
-        /* ===== 第三部分: 在院患者关注提醒 ===== */
-        printf("\n===== 在院患者关注提醒 =====\n");
+        calc_ward_stay_width(ward_stays, ward_count, &s_name_w, &s_cnt_w, &s_avg_w, &s_bar_w);
+    }
 
-        int ongoing_count = 0;
-        for (Hospitalization *h = h_head; h; h = h->next)
+    /* ===== 第三部分预计算：在院患者关注提醒 ===== */
+    int ongoing_count = 0;
+    for (Hospitalization *h = h_head; h; h = h->next)
+    {
+        if (h->status == HOSP_STATUS_ONGOING)
+            ongoing_count++;
+    }
+
+    InpatientAlertStats *alerts = NULL;
+    int alert_count = 0;
+    int pid_w = 0, aname_w = 0, award_w = 0, astayed_w = 0, aavg_w = 0, astatus_w = 0;
+
+    if (ongoing_count > 0 && p_head)
+    {
+        alerts = (InpatientAlertStats *)calloc(ongoing_count, sizeof(InpatientAlertStats));
+        if (!alerts)
         {
-            if (h->status == HOSP_STATUS_ONGOING)
-                ongoing_count++;
+            printf("内存分配失败！\n");
+            if (ward_stays)
+                free(ward_stays);
+            free_hospitalizations(h_head);
+            if (w_head)
+                free_wards(w_head);
+            if (p_head)
+                free_patients(p_head);
+            wait_enter();
+            return;
         }
 
-        if (ongoing_count > 0 && p_head)
+        time_t now = time(NULL);
+
+        for (Hospitalization *h = h_head; h; h = h->next)
         {
-            InpatientAlertStats *alerts = (InpatientAlertStats *)calloc(ongoing_count, sizeof(InpatientAlertStats));
-            if (alerts)
+            if (h->status != HOSP_STATUS_ONGOING)
+                continue;
+
+            int stayed = (int)((now - h->admit_date) / ANALYTICS_SECONDS_PER_DAY);
+            if (stayed < 1)
+                stayed = 1;
+
+            float ward_avg = overall_avg;
+            const char *ward_name = h->ward_id;
+
+            for (int i = 0; i < ward_count; i++)
             {
-                int alert_idx = 0;
-                time_t now = time(NULL);
-
-                for (Hospitalization *h = h_head; h; h = h->next)
+                if (strcmp(ward_stays[i].ward_id, h->ward_id) == 0)
                 {
-                    if (h->status != HOSP_STATUS_ONGOING)
-                        continue;
-
-                    int stayed = (int)((now - h->admit_date) / ANALYTICS_SECONDS_PER_DAY);
-                    if (stayed < 1)
-                        stayed = 1;
-
-                    /* 查找病房平均值 */
-                    float ward_avg = overall_avg;
-                    const char *ward_name = h->ward_id;
-                    for (int i = 0; i < ward_count; i++)
-                    {
-                        if (strcmp(ward_stays[i].ward_id, h->ward_id) == 0)
-                        {
-                            if (ward_stays[i].avg_days > 0)
-                                ward_avg = ward_stays[i].avg_days;
-                            ward_name = ward_stays[i].name;
-                            break;
-                        }
-                    }
-
-                    /* 查找患者姓名 */
-                    Patient *pat = find_patient_by_p_id(p_head, h->p_id);
-                    const char *p_name = pat ? pat->name : h->p_id;
-
-                    strncpy(alerts[alert_idx].p_id, h->p_id, MAX_ID_LEN - 1);
-                    strncpy(alerts[alert_idx].p_name, p_name, MAX_NAME_LEN - 1);
-                    strncpy(alerts[alert_idx].ward_name, ward_name, MAX_NAME_LEN - 1);
-                    alerts[alert_idx].stayed_days = stayed;
-                    alerts[alert_idx].ward_avg = ward_avg;
-                    alerts[alert_idx].is_overdue = (stayed > ward_avg * ANALYTICS_OVERDUE_MULTIPLIER) ? 1 : 0;
-                    alert_idx++;
+                    if (ward_stays[i].avg_days > 0)
+                        ward_avg = ward_stays[i].avg_days;
+                    ward_name = ward_stays[i].name;
+                    break;
                 }
-
-                int pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w;
-                calc_inpatient_alert_width(alerts, alert_idx, &pid_w, &aname_w, &award_w, &astayed_w, &aavg_w,
-                                           &astatus_w);
-                print_inpatient_alert_header(pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w);
-                for (int i = 0; i < alert_idx; i++)
-                    print_inpatient_alert_line(&alerts[i], pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w);
-                int alert_widths[] = {pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w};
-                print_analytics_line(6, alert_widths);
-
-                printf("  状态说明: ⚠ 超期 = 已住天数超过该病房平均值2倍以上\n");
-                printf("            ✓ 正常 = 住院天数在合理范围内\n");
-
-                free(alerts);
             }
+
+            Patient *pat = find_patient_by_p_id(p_head, h->p_id);
+            const char *p_name = pat ? pat->name : h->p_id;
+
+            strncpy(alerts[alert_count].p_id, h->p_id, MAX_ID_LEN - 1);
+            alerts[alert_count].p_id[MAX_ID_LEN - 1] = '\0';
+            strncpy(alerts[alert_count].p_name, p_name, MAX_NAME_LEN - 1);
+            alerts[alert_count].p_name[MAX_NAME_LEN - 1] = '\0';
+            strncpy(alerts[alert_count].ward_name, ward_name, MAX_NAME_LEN - 1);
+            alerts[alert_count].ward_name[MAX_NAME_LEN - 1] = '\0';
+            alerts[alert_count].stayed_days = stayed;
+            alerts[alert_count].ward_avg = ward_avg;
+            alerts[alert_count].is_overdue = (stayed > ward_avg * ANALYTICS_OVERDUE_MULTIPLIER) ? 1 : 0;
+            alert_count++;
+        }
+
+        calc_inpatient_alert_width(alerts, alert_count, &pid_w, &aname_w, &award_w, &astayed_w, &aavg_w, &astatus_w);
+    }
+
+    /* ===== 分类分页交互 ===== */
+    const char *sec_names[SEC_COUNT] = {"住院天数分布（已出院）", "分病房平均住院天数", "在院患者关注提醒"};
+
+    int sec_totals[SEC_COUNT];
+    sec_totals[0] = ANALYTICS_STAY_BUCKET_COUNT;
+    sec_totals[1] = ward_count;
+    sec_totals[2] = alert_count;
+
+    int cur_sec = 0;
+    int cur_page = 1;
+
+    while (1)
+    {
+        clear_screen();
+
+        int total = sec_totals[cur_sec];
+        int total_pages = total > 0 ? (total + PAGE_SIZE - 1) / PAGE_SIZE : 1;
+        if (cur_page > total_pages)
+            cur_page = total_pages;
+
+        int start = (cur_page - 1) * PAGE_SIZE;
+        int end = start + PAGE_SIZE;
+        if (end > total)
+            end = total;
+
+        printf("===== %s (第 %d/%d 页，共 %d 条) =====\n", sec_names[cur_sec], cur_page, total_pages, total);
+
+        switch (cur_sec)
+        {
+        case 0: {
+            print_stay_bucket_header(label_w, bcnt_w, bbar_w);
+            for (int i = start; i < end; i++)
+                print_stay_bucket_line(&buckets[i], max_bucket, label_w, bcnt_w, bbar_w);
+            int bucket_widths[] = {label_w, bcnt_w, bbar_w};
+            print_analytics_line(3, bucket_widths);
+            printf("  全院平均住院天数: %.1f 天\n", overall_avg);
+            break;
+        }
+
+        case 1: {
+            if (total == 0 || !ward_stays)
+            {
+                printf("\n暂无病房平均住院天数数据！\n");
+                break;
+            }
+
+            print_ward_stay_header(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
+            for (int i = start; i < end; i++)
+                print_ward_stay_line(&ward_stays[i], max_int, s_name_w, s_cnt_w, s_avg_w, s_bar_w);
+            print_ward_stay_line_separator(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
+            break;
+        }
+
+        case 2: {
+            if (total == 0 || !alerts)
+            {
+                printf("\n当前无在院患者。\n");
+                break;
+            }
+
+            print_inpatient_alert_header(pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w);
+            for (int i = start; i < end; i++)
+                print_inpatient_alert_line(&alerts[i], pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w);
+            int alert_widths[] = {pid_w, aname_w, award_w, astayed_w, aavg_w, astatus_w};
+            print_analytics_line(6, alert_widths);
+
+            printf("  状态说明: ⚠ 超期 = 已住天数超过该病房平均值2倍以上\n");
+            printf("            ✓ 正常 = 住院天数在合理范围内\n");
+            break;
+        }
+        }
+
+        printf("\n当前类: ");
+        for (int i = 0; i < SEC_COUNT; i++)
+            printf(i == cur_sec ? "[%s] " : " %s  ", sec_names[i]);
+
+        printf("\n[n]下一页  [p]上一页  [nn]下一类  [pp]上一类  [q]退出\n> ");
+
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (cur_page < total_pages)
+                cur_page++;
+        }
+        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (cur_page > 1)
+                cur_page--;
+        }
+        else if (strcmp(buf, "nn") == 0 || strcmp(buf, "NN") == 0)
+        {
+            if (cur_sec < SEC_COUNT - 1)
+            {
+                cur_sec++;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "pp") == 0 || strcmp(buf, "PP") == 0)
+        {
+            if (cur_sec > 0)
+            {
+                cur_sec--;
+                cur_page = 1;
+            }
+        }
+        else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+        {
+            break;
         }
         else
         {
-            printf("  当前无在院患者。\n");
+            printf("输入无效，请重新输入！\n");
+            wait_enter();
         }
-
-        free(ward_stays);
     }
 
-    /* 释放资源 */
+    if (alerts)
+        free(alerts);
+    if (ward_stays)
+        free(ward_stays);
+
     free_hospitalizations(h_head);
     if (w_head)
         free_wards(w_head);
     if (p_head)
         free_patients(p_head);
+
     wait_enter();
+
+#undef SEC_COUNT
 }

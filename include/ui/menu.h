@@ -22,19 +22,17 @@ void manager_main_menu(void); // 管理员系统主界面
 /*
  *管理员系统子菜单
  */
-void manager_patient_menu(void);                 // 患者信息管理
-void manager_doctor_and_department_menu(void);   // 医生和科室管理
-void manager_ward_and_bed_menu(void);            // 病房和床位管理
-void manager_drug_menu(void);                    // 药品和药房管理
-void manager_medical_records_menu(void);         // 医疗记录管理
-void manager_doctor_menu(void);                  // 医生管理
-void manager_department_menu(void);              // 科室管理
-void manager_ward_menu(void);                    // 病房管理
-void manager_bed_menu(void);                     // 床位管理
-void manager_exam_records_menu(void);            // 检查记录管理
-void manager_hospitalization_records_menu(void); // 住院记录管理
-void manager_prescription_records_menu(void);    // 处方记录管理
-void manager_analytics_menu(void);               // 数据分析
+void manager_patient_menu(void);                            // 患者信息管理
+void manager_doctor_and_department_menu(void);              // 医生和科室管理
+void manager_doctor_menu(void);                             // 医生管理
+void manager_department_menu(void);                         // 科室管理
+void manager_ward_and_bed_menu(void);                       // 病房和床位管理
+void manager_ward_menu(void);                               // 病房管理
+void manager_bed_menu(void);                                // 床位管理
+void manager_drug_menu(void);                               // 药品和药房管理
+void manager_medical_records_menu(void);                    // 管理员医疗记录管理
+void manager_delete_medical_records_by_category_menu(void); // 医疗记录分类删除
+void manager_analytics_menu(void);                          // 数据分析
 
 /*
  *患者系统子菜单
@@ -52,5 +50,11 @@ void doctor_medical_records_menu(void);         // 医生医疗记录管理
 void doctor_exam_records_menu(void);            // 医生检查记录管理
 void doctor_hospitalization_records_menu(void); // 医生住院记录管理
 void doctor_prescription_records_menu(void);    // 医生处方记录管理
+
+/*
+ *共用子菜单
+ */
+void query_medical_records_by_category_menu(void); // 分类记录查询
+void print_medical_records_by_category(void);      // 分类记录打印
 
 #endif

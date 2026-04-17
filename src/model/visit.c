@@ -149,36 +149,6 @@ void free_visits(Visit *head)
     }
 }
 
-static const char *get_patient_id_by_reg_id(Registration *reg_head, const char *reg_id)
-{
-    if (!reg_id)
-        return "未知患者";
-    for (Registration *r = reg_head; r; r = r->next)
-        if (strcmp(r->reg_id, reg_id) == 0)
-            return r->p_id;
-    return "未知患者";
-}
-
-static const char *get_doctor_id_by_reg_id(Registration *reg_head, const char *reg_id)
-{
-    if (!reg_id)
-        return "未知医生";
-    for (Registration *r = reg_head; r; r = r->next)
-        if (strcmp(r->reg_id, reg_id) == 0)
-            return r->d_id;
-    return "未知医生";
-}
-
-static const char *get_patient_name_by_patient_id(Patient *p_head, const char *p_id)
-{
-    if (!p_id)
-        return "未知患者";
-    for (Patient *p = p_head; p; p = p->next)
-        if (strcmp(p->id, p_id) == 0)
-            return p->name;
-    return "未知患者";
-}
-
 /* 根据看诊ID查找看诊 */
 Visit *find_visit_by_v_id(Visit *v_head, const char *v_id)
 {
@@ -257,7 +227,7 @@ void print_visit(Visit *v, Registration *reg_head, Patient *p_head, Doctor *d_he
     char st_buf[16];
 
     const char *p_id = get_patient_id_by_reg_id(reg_head, v->reg_id);
-    const char *p_name = get_patient_name_by_patient_id(p_head, p_id);
+    const char *p_name = get_patient_name_by_p_id(p_head, p_id);
     const char *d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
     Doctor *doc = find_doctor_by_d_id(d_head, d_id);
     const char *d_name = doc ? doc->name : "未知医生";
@@ -358,7 +328,7 @@ void calc_visit_width(Visit *v_head, Registration *reg_head, Patient *p_head, Do
         const char *st = "未知";
 
         const char *p_id = get_patient_id_by_reg_id(reg_head, v->reg_id);
-        const char *p_name = get_patient_name_by_patient_id(p_head, p_id);
+        const char *p_name = get_patient_name_by_p_id(p_head, p_id);
         const char *d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
         Doctor *doc = find_doctor_by_d_id(d_head, d_id);
         const char *d_name = doc ? doc->name : "未知医生";
@@ -392,6 +362,62 @@ void calc_visit_width(Visit *v_head, Registration *reg_head, Patient *p_head, Do
         if (w > *diag_w)
             *diag_w = w;
     }
+}
+
+/* 统计看诊数量 */
+int count_visits(Visit *head)
+{
+    int count = 0;
+    for (Visit *cur = head; cur; cur = cur->next)
+    {
+        count++;
+    }
+    return count;
+}
+
+/* 获取第n个看诊节点 */
+Visit *get_nth_visit(Visit *head, int n)
+{
+    int count = 0;
+    for (Visit *v = head; v; v = v->next)
+    {
+        if (count == n)
+            return v;
+        count++;
+    }
+    return NULL;
+}
+
+/* 统计医生名下的看诊数量 */
+int count_visits_for_doctor(Visit *v_head, Registration *reg_head, const char *d_id)
+{
+    int count = 0;
+    for (Visit *v = v_head; v; v = v->next)
+    {
+        const char *v_d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
+        if (v_d_id && strcmp(v_d_id, d_id) == 0)
+        {
+            count++;
+        }
+    }
+    return count;
+}
+
+/* 获取医生名下的第n个看诊节点 */
+Visit *get_nth_visit_for_doctor(Visit *v_head, Registration *reg_head, const char *d_id, int n)
+{
+    int count = 0;
+    for (Visit *v = v_head; v; v = v->next)
+    {
+        const char *v_d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
+        if (v_d_id && strcmp(v_d_id, d_id) == 0)
+        {
+            if (count == n)
+                return v;
+            count++;
+        }
+    }
+    return NULL;
 }
 
 /*
@@ -444,6 +470,31 @@ void append_visit(Visit **head, Visit *new_visit)
     while (current->next)
         current = current->next;
     current->next = new_visit;
+}
+
+/* 删除看诊 */
+void visit_remove(Visit **head, Visit *target)
+{
+    if (!head || !*head || !target)
+        return;
+
+    if (*head == target)
+    {
+        *head = target->next;
+        free(target);
+        return;
+    }
+
+    Visit *prev = *head;
+    while (prev->next && prev->next != target)
+        prev = prev->next;
+
+    if (prev->next == target)
+    {
+        prev->next = target->next;
+        free(target);
+    }
+    /* 若未找到 target 说明它不在链表中, 不处理 */
 }
 
 /* 更新诊断结果 */

@@ -580,37 +580,31 @@ void delete_patient()
             }
             else // 用户输入y/Y确认删除
             {
-                /* 检查是否有关联的未完成挂号记录 */
+                /* 统计未完成的挂号记录数 */
+                int pending_reg = 0;
                 Registration *reg_head = load_registrations_from_file();
-                int has_active = 0;
                 for (Registration *r = reg_head; r; r = r->next)
                 {
                     if (strcmp(r->p_id, id) == 0 && r->status == REG_STATUS_PENDING)
-                    {
-                        has_active = 1;
-                        break;
-                    }
+                        pending_reg++;
                 }
                 free_registrations(reg_head);
 
-                if (!has_active)
+                /* 统计进行中的住院记录数 */
+                int ongoing_hosp = 0;
+                Hospitalization *h_head = load_hospitalizations_from_file();
+                for (Hospitalization *h = h_head; h; h = h->next)
                 {
-                    /* 检查是否有进行中的住院记录 */
-                    Hospitalization *h_head = load_hospitalizations_from_file();
-                    for (Hospitalization *h = h_head; h; h = h->next)
-                    {
-                        if (strcmp(h->p_id, id) == 0 && h->status == HOSP_STATUS_ONGOING)
-                        {
-                            has_active = 1;
-                            break;
-                        }
-                    }
-                    free_hospitalizations(h_head);
+                    if (strcmp(h->p_id, id) == 0 && h->status == HOSP_STATUS_ONGOING)
+                        ongoing_hosp++;
                 }
+                free_hospitalizations(h_head);
 
-                if (has_active)
+                if (pending_reg > 0 || ongoing_hosp > 0)
                 {
-                    printf("无法删除！该患者仍有未完成的挂号或住院记录，请先处理。\n");
+                    printf("无法删除！该患者仍有未完成的挂号或住院记录，请先处理：\n");
+                    printf("  - 挂号记录: %d 条\n", pending_reg);
+                    printf("  - 住院记录: %d 条\n", ongoing_hosp);
                     free_patients(patient_head);
                     wait_enter();
                     clear_screen();
@@ -638,6 +632,7 @@ void delete_patient()
         current = current->next;
     }
     printf("未找到指定ID的患者！\n");
+    free_patients(patient_head);
     wait_enter();
     clear_screen();
 }

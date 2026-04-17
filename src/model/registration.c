@@ -212,15 +212,6 @@ int generate_next_registration_id(Registration *head)
     return max_id + 1;
 }
 
-/* 根据患者ID获取患者姓名 */
-static const char *get_patient_name_by_p_id(Patient *head, const char *p_id)
-{
-    for (Patient *p = head; p; p = p->next)
-        if (strcmp(p->id, p_id) == 0)
-            return p->name;
-    return p_id; // 找不到回退显示ID
-}
-
 /* 打印挂号信息行 */
 void print_registration(Registration *r, Patient *p_head, Doctor *d_head, int reg_w, int p_w, int d_w, int dept_w,
                         int when_w, int st_w)
@@ -352,7 +343,31 @@ void calc_registration_width(Registration *r_head, Patient *p_head, Doctor *d_he
     }
 }
 
-/* 统计医生的挂号数量 */
+/* 统计挂号数量 */
+int count_registrations(Registration *head)
+{
+    int count = 0;
+    for (Registration *cur = head; cur; cur = cur->next)
+    {
+        count++;
+    }
+    return count;
+}
+
+/* 获取第n个挂号节点 */
+Registration *get_nth_registration(Registration *head, int n)
+{
+    int count = 0;
+    for (Registration *cur = head; cur; cur = cur->next)
+    {
+        if (count == n)
+            return cur;
+        count++;
+    }
+    return NULL;
+}
+
+/* 统计医生名下的挂号数量 */
 int count_registrations_for_doctor(Registration *head, const char *d_id)
 {
     int count = 0;
@@ -364,7 +379,7 @@ int count_registrations_for_doctor(Registration *head, const char *d_id)
     return count;
 }
 
-/* 获取医生的第n个挂号节点 */
+/* 获取医生名下的第n个挂号节点 */
 Registration *get_nth_registration_for_doctor(Registration *head, const char *d_id, int n)
 {
     int count = 0;
@@ -378,6 +393,36 @@ Registration *get_nth_registration_for_doctor(Registration *head, const char *d_
         }
     }
     return NULL;
+}
+
+const char *get_patient_id_by_reg_id(Registration *reg_head, const char *reg_id)
+{
+    if (!reg_id)
+        return "未知患者";
+    for (Registration *r = reg_head; r; r = r->next)
+        if (strcmp(r->reg_id, reg_id) == 0)
+            return r->p_id;
+    return "未知患者";
+}
+
+const char *get_doctor_id_by_reg_id(Registration *reg_head, const char *reg_id)
+{
+    if (!reg_id)
+        return "未知医生";
+    for (Registration *r = reg_head; r; r = r->next)
+        if (strcmp(r->reg_id, reg_id) == 0)
+            return r->d_id;
+    return "未知医生";
+}
+
+const char *get_patient_name_by_p_id(Patient *p_head, const char *p_id)
+{
+    if (!p_id)
+        return "未知患者";
+    for (Patient *p = p_head; p; p = p->next)
+        if (strcmp(p->id, p_id) == 0)
+            return p->name;
+    return "未知患者";
 }
 
 /*
@@ -423,4 +468,29 @@ void append_registration(Registration **head, Registration *new_registration)
     while (current->next)
         current = current->next;
     current->next = new_registration;
+}
+
+/* 删除挂号 */
+void registration_remove(Registration **head, Registration *target)
+{
+    if (!head || !*head || !target)
+        return;
+
+    if (*head == target)
+    {
+        *head = target->next;
+        free(target);
+        return;
+    }
+
+    Registration *prev = *head;
+    while (prev->next && prev->next != target)
+        prev = prev->next;
+
+    if (prev->next == target)
+    {
+        prev->next = target->next;
+        free(target);
+    }
+    /* 若未找到 target 说明它不在链表中, 不处理 */
 }

@@ -34,14 +34,19 @@ void calc_hospitalization_width(Hospitalization *h_head, Visit *v_head, Registra
                                 int *in_w, int *out_w, int *st_w);      // 计算住院表格列宽
 int count_hospitalizations(Hospitalization *head);                      // 统计数量
 Hospitalization *get_nth_hospitalization(Hospitalization *head, int n); // 获取第n个住院节点
+int count_hospitalizations_for_doctor(Hospitalization *h_head, Registration *reg_head,
+                                      const char *d_id); // 统计医生名下的住院数量
+Hospitalization *get_nth_hospitalization_for_doctor(Hospitalization *h_head, Registration *reg_head, const char *d_id,
+                                                    int n); // 获取医生名下的第n个住院节点
 
 /*
  * 住院功能函数
  */
 Hospitalization create_hospitalization(const char *hosp_id, const char *visit_id, const char *p_id, const char *ward_id,
                                        const char *bed_id, time_t admit_date, time_t discharge_date,
-                                       int status);                             // 创建住院记录
-void append_hospitalization(Hospitalization **head, Hospitalization *new_hosp); // 尾插住院记录
+                                       int status);                             // 创建住院
+void append_hospitalization(Hospitalization **head, Hospitalization *new_hosp); // 尾插住院
+void hospitalization_remove(Hospitalization **head, Hospitalization *target);   // 删除住院
 int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const char *visit_id, const char *p_id,
                   const char *preferred_ward_id);                                               // 入院
 int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const char *hosp_id); // 出院
@@ -51,10 +56,5 @@ int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const 
  */
 void doctor_admit_patient_hospitalization(const char *v_id);     // 医生办理住院
 void doctor_discharge_patient_hospitalization(const char *v_id); // 医生办理出院
-void add_hospitalization_record();                               // 添加住院记录
-void delete_hospitalization_record();                            // 删除住院记录
-void update_hospitalization_record();                            // 更新住院记录
-void query_hospitalization_record();                             // 查询住院记录
-void show_all_hospitalization_records();                         // 显示所有住院记录
 
 #endif

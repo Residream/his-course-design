@@ -178,12 +178,6 @@ Prescription *find_prescription_by_d_id(Prescription *head, const char *d_id)
     return NULL;
 }
 
-static const char *get_patient_name_by_p_id(Patient *p_head, const char *p_id)
-{
-    Patient *p = find_patient_by_p_id(p_head, p_id);
-    return p ? p->name : p_id;
-}
-
 /* 生成自增处方ID */
 int generate_next_prescription_id(Prescription *head)
 {
@@ -353,13 +347,47 @@ int count_prescriptions(Prescription *head)
 }
 
 /* 获取第n个处方节点 */
-Prescription *get_prescription_by_index(Prescription *head, int index)
+Prescription *get_nth_prescription(Prescription *head, int n)
 {
     Prescription *pr = head;
-    for (int i = 0; i < index && pr; i++)
+    for (int i = 0; i < n && pr; i++)
         pr = pr->next;
     return pr;
 }
+
+/* 统计医生名下的处方数量 */
+int count_prescriptions_for_doctor(Prescription *pr_head, const char *d_id)
+{
+    int count = 0;
+    for (Prescription *cur = pr_head; cur; cur = cur->next)
+    {
+        if (strcmp(cur->d_id, d_id) == 0)
+        {
+            count++;
+        }
+    }
+    return count;
+}
+
+/* 获取医生名下的第n个处方节点 */
+Prescription *get_nth_prescription_for_doctor(Prescription *pr_head, const char *d_id, int n)
+{
+    int count = 0;
+    for (Prescription *cur = pr_head; cur; cur = cur->next)
+    {
+        if (strcmp(cur->d_id, d_id) == 0)
+        {
+            if (count == n)
+                return cur;
+            count++;
+        }
+    }
+    return NULL;
+}
+
+/*
+ * 处方功能函数
+ */
 
 /* 创建处方 */
 Prescription create_prescription(const char *pr_id, const char *visit_id, const char *p_id, const char *d_id,
@@ -398,544 +426,27 @@ void append_prescription(Prescription **head, Prescription *new_pr)
     cur->next = new_pr;
 }
 
-/*
- * 处方系统功能(增删改查)
- */
-
-/* 添加处方记录(需指定看诊ID, 自动关联患者和医生) */
-void add_prescription_record()
+/* 删除处方 */
+void prescription_remove(Prescription **head, Prescription *target)
 {
-    Prescription *pr_head = load_prescriptions_from_file();
-    Registration *r_head = load_registrations_from_file();
-    Visit *v_head = load_visits_from_file();
-    Patient *p_head = load_patients_from_file();
-    Doctor *d_head = load_doctors_from_file();
-    Drug *drug_head = load_drugs_from_file();
+    if (!head || !*head || !target)
+        return;
 
-    char pr_id[MAX_ID_LEN];
-    char visit_id[MAX_ID_LEN];
-    char p_id[MAX_ID_LEN];
-    char d_id[MAX_ID_LEN];
-    char drug_id[MAX_ID_LEN];
-    char dose[MAX_DOSE_LEN];
-    char frequency[MAX_FREQ_LEN];
-
-    /* 自动分配新处方ID */
-    int id_num = generate_next_prescription_id(pr_head);
-    snprintf(pr_id, sizeof(pr_id), "PR%04d", id_num);
-
-    Visit *visit = NULL;
-    Registration *reg = NULL;
-
-    /* 获取并验证看诊ID */
-    while (1)
+    if (*head == target)
     {
-        printf("请输入看诊ID(输入0返回): ");
-        safe_input(visit_id, sizeof(visit_id));
-        if (strcmp(visit_id, "0") == 0)
-            goto cleanup;
-
-        if (visit_id[0] == '\0')
-        {
-            printf("输入错误！看诊ID不能为空。\n");
-            continue;
-        }
-
-        visit = find_visit_by_v_id(v_head, visit_id);
-        if (!visit)
-        {
-            printf("未找到该看诊ID！\n");
-            continue;
-        }
-
-        reg = find_registration_by_r_id(r_head, visit->reg_id);
-        if (!reg)
-        {
-            printf("该看诊记录关联的挂号记录丢失，数据异常！\n");
-            goto cleanup;
-        }
-        break;
-    }
-
-    /* 获取并验证患者ID */
-    while (1)
-    {
-        printf("请输入患者ID(输入0返回): ");
-        safe_input(p_id, sizeof(p_id));
-        if (strcmp(p_id, "0") == 0)
-            goto cleanup;
-
-        if (p_id[0] == '\0')
-            continue;
-
-        if (!find_patient_by_p_id(p_head, p_id))
-        {
-            printf("未找到该患者ID！\n");
-            continue;
-        }
-        if (strcmp(reg->p_id, p_id) != 0)
-        {
-            printf("错误：患者ID与原看诊记录的患者不匹配 (该看诊属患者: %s)！\n", reg->p_id);
-            continue;
-        }
-        break;
-    }
-
-    /* 获取并验证医生ID */
-    while (1)
-    {
-        printf("请输入医生ID(输入0返回): ");
-        safe_input(d_id, sizeof(d_id));
-        if (strcmp(d_id, "0") == 0)
-            goto cleanup;
-
-        if (d_id[0] == '\0')
-            continue;
-
-        if (!find_doctor_by_d_id(d_head, d_id))
-        {
-            printf("未找到该医生ID！\n");
-            continue;
-        }
-        if (strcmp(reg->d_id, d_id) != 0)
-        {
-            printf("错误：医生ID与原看诊记录的医生不匹配 (原看诊医生: %s)！\n", reg->d_id);
-            continue;
-        }
-        break;
-    }
-
-    /* 获取并验证药品ID */
-    while (1)
-    {
-        printf("请输入药品ID(输入0返回): ");
-        safe_input(drug_id, sizeof(drug_id));
-        if (strcmp(drug_id, "0") == 0)
-            goto cleanup;
-
-        if (drug_id[0] == '\0')
-            continue;
-
-        if (!find_drug_by_id(drug_head, drug_id))
-        {
-            printf("未找到该药品ID！\n");
-            continue;
-        }
-        break;
-    }
-
-    /* 剂量 */
-    while (1)
-    {
-        printf("请输入剂量(如 1粒, 10ml, 输入0返回): ");
-        safe_input(dose, sizeof(dose));
-        if (strcmp(dose, "0") == 0)
-            goto cleanup;
-        if (dose[0] != '\0')
-            break;
-    }
-
-    /* 频次 */
-    while (1)
-    {
-        printf("请输入频次(如 1日3次, 输入0返回): ");
-        safe_input(frequency, sizeof(frequency));
-        if (strcmp(frequency, "0") == 0)
-            goto cleanup;
-        if (frequency[0] != '\0')
-            break;
-    }
-
-    /* 构建并插入新处方 */
-    Prescription *new_node = (Prescription *)malloc(sizeof(Prescription));
-    if (!new_node)
-    {
-        printf("内存分配失败！\n");
-        goto cleanup;
-    }
-
-    *new_node = create_prescription(pr_id, visit_id, p_id, d_id, drug_id, dose, frequency);
-    append_prescription(&pr_head, new_node);
-
-    if (save_prescriptions_to_file(pr_head) != 0)
-        printf("保存处方信息失败！\n");
-    else
-        printf("处方记录添加成功！分配的处方ID: %s\n", pr_id);
-
-    wait_enter();
-
-cleanup:
-    free_prescriptions(pr_head);
-    free_registrations(r_head);
-    free_visits(v_head);
-    free_patients(p_head);
-    free_doctors(d_head);
-    free_drugs(drug_head);
-    clear_screen();
-}
-
-/* 删除处方记录 */
-void delete_prescription_record()
-{
-    char pr_id[MAX_ID_LEN];
-    Prescription *pr_head = load_prescriptions_from_file();
-    Patient *p_head = load_patients_from_file();
-    Doctor *d_head = load_doctors_from_file();
-    Drug *drug_head = load_drugs_from_file();
-
-    while (1)
-    {
-        printf("请输入要删除的处方ID(输入0返回): ");
-        safe_input(pr_id, sizeof(pr_id));
-        if (strcmp(pr_id, "0") == 0)
-            break;
-
-        if (pr_id[0] == '\0')
-        {
-            printf("输入错误！处方ID不能为空。\n");
-            continue;
-        }
-
-        Prescription *current = pr_head, *prev = NULL;
-        int found = 0;
-
-        while (current)
-        {
-            if (strcmp(current->pr_id, pr_id) == 0)
-            {
-                found = 1;
-                int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-                calc_prescription_width(current, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w,
-                                        &dose_w, &freq_w);
-
-                clear_screen();
-                printf("找到处方:\n");
-                print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-                print_prescription(current, p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-                print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-
-                printf("确认要删除处方记录 %s 吗？(y/n): ", current->pr_id);
-                char choice[16];
-                safe_input(choice, sizeof(choice));
-                if (strcmp(choice, "y") != 0 && strcmp(choice, "Y") != 0)
-                {
-                    printf("已取消删除。\n");
-                    break;
-                }
-
-                if (prev)
-                    prev->next = current->next;
-                else
-                    pr_head = current->next;
-
-                free(current);
-
-                if (save_prescriptions_to_file(pr_head) != 0)
-                    printf("保存处方信息失败！\n");
-                else
-                    printf("删除成功！\n");
-                break;
-            }
-            prev = current;
-            current = current->next;
-        }
-
-        if (!found)
-            printf("未找到指定ID的处方记录！\n");
-
-        wait_enter();
-        clear_screen();
-        break;
-    }
-
-    free_prescriptions(pr_head);
-    free_patients(p_head);
-    free_doctors(d_head);
-    free_drugs(drug_head);
-}
-
-/* 更新处方记录 */
-void update_prescription_record()
-{
-    char pr_id[MAX_ID_LEN];
-    char buf[MAX_INPUT_LEN];
-
-    Prescription *pr_head = load_prescriptions_from_file();
-    if (!pr_head)
-    {
-        printf("暂无处方记录可更新！\n");
-        wait_enter();
-        clear_screen();
+        *head = target->next;
+        free(target);
         return;
     }
 
-    printf("请输入要修改的处方ID(输入0返回): ");
-    safe_input(pr_id, sizeof(pr_id));
+    Prescription *prev = *head;
+    while (prev->next && prev->next != target)
+        prev = prev->next;
 
-    if (strcmp(pr_id, "0") == 0)
+    if (prev->next == target)
     {
-        clear_screen();
-        free_prescriptions(pr_head);
-        return;
+        prev->next = target->next;
+        free(target);
     }
-
-    if (pr_id[0] == '\0')
-    {
-        printf("输入错误！处方ID不能为空。\n");
-        wait_enter();
-        clear_screen();
-        free_prescriptions(pr_head);
-        return;
-    }
-
-    Prescription *current = NULL;
-    for (current = pr_head; current; current = current->next)
-    {
-        if (strcmp(current->pr_id, pr_id) != 0)
-            continue;
-
-        Patient *p_head = load_patients_from_file();
-        Doctor *d_head = load_doctors_from_file();
-        Drug *drug_head = load_drugs_from_file();
-
-        int done = 0;
-        while (!done)
-        {
-            clear_screen();
-            int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-            calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
-                                    &freq_w);
-
-            printf("找到处方记录，信息如下：\n");
-            print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-            print_prescription(current, p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-            print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-
-            printf("\n请选择要修改的字段:\n");
-            printf("1. 更新剂量 (当前: %s)\n", current->dose);
-            printf("2. 更新频次 (当前: %s)\n", current->frequency);
-            printf("0. 返回\n");
-            printf("请输入您的选择: ");
-            safe_input(buf, sizeof(buf));
-
-            if (!validate_choice(buf, 2))
-            {
-                printf("输入有误，请重新选择！\n");
-                wait_enter();
-                continue;
-            }
-
-            int select = atoi(buf);
-            if (select == 0)
-            {
-                done = 1;
-                continue;
-            }
-
-            if (select == 1)
-            {
-                printf("请输入新的剂量(输入0取消): ");
-                safe_input(buf, sizeof(buf));
-                if (strcmp(buf, "0") != 0 && buf[0] != '\0')
-                {
-                    strncpy(current->dose, buf, sizeof(current->dose) - 1);
-                    current->dose[sizeof(current->dose) - 1] = '\0';
-
-                    if (save_prescriptions_to_file(pr_head) != 0)
-                        printf("保存处方信息失败！\n");
-                    else
-                        printf("更新成功！\n");
-                }
-                wait_enter();
-            }
-            else if (select == 2)
-            {
-                printf("请输入新的频次(输入0取消): ");
-                safe_input(buf, sizeof(buf));
-                if (strcmp(buf, "0") != 0 && buf[0] != '\0')
-                {
-                    strncpy(current->frequency, buf, sizeof(current->frequency) - 1);
-                    current->frequency[sizeof(current->frequency) - 1] = '\0';
-
-                    if (save_prescriptions_to_file(pr_head) != 0)
-                        printf("保存处方信息失败！\n");
-                    else
-                        printf("更新成功！\n");
-                }
-                wait_enter();
-            }
-        }
-
-        free_prescriptions(pr_head);
-        free_patients(p_head);
-        free_doctors(d_head);
-        free_drugs(drug_head);
-        clear_screen();
-        return;
-    }
-
-    printf("未找到指定ID的处方记录！\n");
-    wait_enter();
-    clear_screen();
-    free_prescriptions(pr_head);
-}
-
-/* 查询处方记录 */
-void query_prescription_record()
-{
-    Prescription *pr_head = load_prescriptions_from_file();
-    Patient *p_head = load_patients_from_file();
-    Doctor *d_head = load_doctors_from_file();
-    Drug *drug_head = load_drugs_from_file();
-    char buf[MAX_INPUT_LEN];
-
-    while (1)
-    {
-        clear_screen();
-        printf("===== 查询处方记录 =====\n");
-        printf("1. 按处方ID查询\n");
-        printf("2. 按看诊ID查询\n");
-        printf("3. 按患者ID查询\n");
-        printf("4. 按医生ID查询\n");
-        printf("5. 按药品名称模糊查询\n");
-        printf("0. 返回\n");
-        printf("请输入您的选择: ");
-        safe_input(buf, sizeof(buf));
-
-        if (!validate_choice(buf, 5))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            continue;
-        }
-
-        int select = atoi(buf);
-        if (select == 0)
-            break;
-
-        char query[MAX_INPUT_LEN];
-        printf("请输入查询关键字(输入0返回): ");
-        safe_input(query, sizeof(query));
-
-        if (strcmp(query, "0") == 0)
-            continue;
-
-        int found = 0;
-        int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-        calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
-                                &freq_w);
-
-        for (Prescription *cur = pr_head; cur; cur = cur->next)
-        {
-            int match = 0;
-            if (select == 1 && strcmp(cur->pr_id, query) == 0)
-                match = 1;
-            else if (select == 2 && strcmp(cur->visit_id, query) == 0)
-                match = 1;
-            else if (select == 3 && strcmp(cur->p_id, query) == 0)
-                match = 1;
-            else if (select == 4 && strcmp(cur->d_id, query) == 0)
-                match = 1;
-            else if (select == 5) // 按药品名称模糊匹配（通用名/商品名/别名）
-            {
-                Drug *drug = find_drug_by_id(drug_head, cur->drug_id);
-                if (drug && (strstr(drug->generic_name, query) != NULL || strstr(drug->trade_name, query) != NULL ||
-                             strstr(drug->alias, query) != NULL))
-                    match = 1;
-            }
-
-            if (match)
-            {
-                if (!found)
-                {
-                    print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-                    found = 1;
-                }
-                print_prescription(cur, p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-            }
-        }
-
-        if (!found)
-            printf("未找到匹配的处方记录！\n");
-        else
-            print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-
-        wait_enter();
-    }
-
-    free_prescriptions(pr_head);
-    free_patients(p_head);
-    free_doctors(d_head);
-    free_drugs(drug_head);
-    clear_screen();
-}
-
-/* 显示所有处方记录 */
-void show_all_prescription_records()
-{
-    Prescription *pr_head = load_prescriptions_from_file();
-    if (!pr_head)
-    {
-        printf("暂无处方记录！\n");
-        wait_enter();
-        clear_screen();
-        return;
-    }
-
-    Patient *p_head = load_patients_from_file();
-    Doctor *d_head = load_doctors_from_file();
-    Drug *drug_head = load_drugs_from_file();
-
-    int page_size = PAGE_SIZE;
-    int total = count_prescriptions(pr_head);
-    int total_pages = (total + page_size - 1) / page_size;
-    int current_page = 1;
-
-    int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
-    calc_prescription_width(pr_head, p_head, d_head, drug_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w, &freq_w);
-
-    while (1)
-    {
-        clear_screen();
-        printf("===== 处方列表 (第 %d/%d 页) =====\n", current_page, total_pages);
-        print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-
-        int start = (current_page - 1) * page_size;
-        Prescription *pr_cur = get_prescription_by_index(pr_head, start);
-
-        for (int i = 0; i < page_size && pr_cur; i++)
-        {
-            print_prescription(pr_cur, p_head, d_head, drug_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-            pr_cur = pr_cur->next;
-        }
-        print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-
-        printf("\n[n]下一页  [p]上一页  [q]退出\n> ");
-        char buf[MAX_INPUT_LEN];
-        safe_input(buf, sizeof(buf));
-
-        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
-        {
-            if (current_page < total_pages)
-                current_page++;
-        }
-        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
-        {
-            if (current_page > 1)
-                current_page--;
-        }
-        else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
-            break;
-        else
-        {
-            printf("输入无效！\n");
-            wait_enter();
-        }
-    }
-
-    free_prescriptions(pr_head);
-    free_patients(p_head);
-    free_doctors(d_head);
-    free_drugs(drug_head);
-    clear_screen();
+    /* 若未找到 target 说明它不在链表中, 不处理 */
 }

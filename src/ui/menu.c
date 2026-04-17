@@ -14,6 +14,7 @@
 #include "model/drug.h"
 #include "model/exam.h"
 #include "model/hospitalization.h"
+#include "model/medical.h"
 #include "model/patient.h"
 #include "model/prescription.h"
 #include "model/registration.h"
@@ -370,10 +371,10 @@ void patient_main_menu()
         menu_split();
         menu_item(1, "个人信息管理");
         menu_item(2, "挂号预约");
-        menu_item(3, "查看看诊记录");
-        menu_item(4, "查看检查记录");
-        menu_item(5, "查看住院记录");
-        menu_item(6, "查看处方记录");
+        menu_item(3, "查看我的看诊记录");
+        menu_item(4, "查看我的检查记录");
+        menu_item(5, "查看我的住院记录");
+        menu_item(6, "查看我的处方记录");
         menu_blank();
         menu_item(0, "退出系统");
         menu_bottom();
@@ -436,8 +437,8 @@ void doctor_main_menu()
         menu_split();
         menu_item(1, "个人信息管理");
         menu_item(2, "查看患者信息");
-        menu_item(3, "查看挂号信息");
-        menu_item(4, "看诊管理");
+        menu_item(3, "查看名下挂号信息");
+        menu_item(4, "名下看诊管理");
         menu_item(5, "医疗记录管理");
         menu_item(6, "处方发药");
         menu_blank();
@@ -714,6 +715,122 @@ void manager_ward_and_bed_menu()
     }
 }
 
+/* 医生管理 */
+void manager_doctor_menu()
+{
+    char buf[MAX_INPUT_LEN];
+    int select;
+    while (1)
+    {
+        clear_screen();
+        menu_top();
+        menu_title("医生管理");
+        menu_split();
+        menu_item(1, "添加医生");
+        menu_item(2, "删除医生");
+        menu_item(3, "修改医生信息");
+        menu_item(4, "查询医生信息");
+        menu_item(5, "展示所有医生");
+        menu_blank();
+        menu_item(0, "返回上级菜单");
+        menu_bottom();
+
+        printf("请输入您的选择: ");
+        safe_input(buf, MAX_INPUT_LEN);
+
+        if (!validate_choice(buf, 5))
+        {
+            printf("输入有误，请重新选择！\n");
+            wait_enter();
+            clear_screen();
+            continue;
+        }
+
+        select = atoi(buf);
+
+        switch (select)
+        {
+        case 1:
+            add_doctor();
+            break;
+        case 2:
+            delete_doctor();
+            break;
+        case 3:
+            update_doctor();
+            break;
+        case 4:
+            query_doctor();
+            break;
+        case 5:
+            show_all_doctors();
+            break;
+        case 0:
+            clear_screen();
+            return;
+        default:
+            printf("未知错误: %d\n", select);
+            break;
+        }
+    }
+}
+
+/* 科室管理 */
+void manager_department_menu()
+{
+    char buf[MAX_INPUT_LEN];
+    int select;
+    while (1)
+    {
+        clear_screen();
+        menu_top();
+        menu_title("科室管理");
+        menu_split();
+        menu_item(1, "添加科室");
+        menu_item(2, "删除科室");
+        menu_item(3, "展示科室医生");
+        menu_item(4, "展示所有科室");
+        menu_blank();
+        menu_item(0, "返回上级菜单");
+        menu_bottom();
+
+        printf("请输入您的选择: ");
+        safe_input(buf, MAX_INPUT_LEN);
+
+        if (!validate_choice(buf, 4))
+        {
+            printf("输入有误，请重新选择！\n");
+            wait_enter();
+            clear_screen();
+            continue;
+        }
+
+        select = atoi(buf);
+
+        switch (select)
+        {
+        case 1:
+            add_department();
+            break;
+        case 2:
+            delete_department();
+            break;
+        case 3:
+            show_department_doctors();
+            break;
+        case 4:
+            show_all_departments();
+            break;
+        case 0:
+            clear_screen();
+            return;
+        default:
+            printf("未知错误: %d\n", select);
+            break;
+        }
+    }
+}
+
 /* 药品和药房管理 */
 void manager_drug_menu()
 {
@@ -916,174 +1033,6 @@ void manager_drug_menu()
     }
 }
 
-/* 医疗记录管理 */
-void manager_medical_records_menu()
-{
-    char buf[MAX_INPUT_LEN];
-    int select;
-    while (1)
-    {
-        clear_screen();
-        menu_top();
-        menu_title("医疗记录管理");
-        menu_split();
-        menu_item(1, "检查记录管理");
-        menu_item(2, "住院记录管理");
-        menu_item(3, "处方记录管理");
-        menu_blank();
-        menu_item(0, "返回上级菜单");
-        menu_bottom();
-
-        printf("请输入您的选择: ");
-        safe_input(buf, MAX_INPUT_LEN);
-
-        if (!validate_choice(buf, 3))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            clear_screen();
-            continue;
-        }
-
-        select = atoi(buf);
-
-        switch (select)
-        {
-        case 1:
-            manager_exam_records_menu();
-            break;
-        case 2:
-            manager_hospitalization_records_menu();
-            break;
-        case 3:
-            manager_prescription_records_menu();
-            break;
-        case 0:
-            clear_screen();
-            return;
-        default:
-            printf("未知错误: %d\n", select);
-            break;
-        }
-    }
-}
-
-/* 医生管理 */
-void manager_doctor_menu()
-{
-    char buf[MAX_INPUT_LEN];
-    int select;
-    while (1)
-    {
-        clear_screen();
-        menu_top();
-        menu_title("医生管理");
-        menu_split();
-        menu_item(1, "添加医生");
-        menu_item(2, "删除医生");
-        menu_item(3, "修改医生信息");
-        menu_item(4, "查询医生信息");
-        menu_item(5, "展示所有医生");
-        menu_blank();
-        menu_item(0, "返回上级菜单");
-        menu_bottom();
-
-        printf("请输入您的选择: ");
-        safe_input(buf, MAX_INPUT_LEN);
-
-        if (!validate_choice(buf, 5))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            clear_screen();
-            continue;
-        }
-
-        select = atoi(buf);
-
-        switch (select)
-        {
-        case 1:
-            add_doctor();
-            break;
-        case 2:
-            delete_doctor();
-            break;
-        case 3:
-            update_doctor();
-            break;
-        case 4:
-            query_doctor();
-            break;
-        case 5:
-            show_all_doctors();
-            break;
-        case 0:
-            clear_screen();
-            return;
-        default:
-            printf("未知错误: %d\n", select);
-            break;
-        }
-    }
-}
-
-/* 科室管理 */
-void manager_department_menu()
-{
-    char buf[MAX_INPUT_LEN];
-    int select;
-    while (1)
-    {
-        clear_screen();
-        menu_top();
-        menu_title("科室管理");
-        menu_split();
-        menu_item(1, "添加科室");
-        menu_item(2, "删除科室");
-        menu_item(3, "展示科室医生");
-        menu_item(4, "展示所有科室");
-        menu_blank();
-        menu_item(0, "返回上级菜单");
-        menu_bottom();
-
-        printf("请输入您的选择: ");
-        safe_input(buf, MAX_INPUT_LEN);
-
-        if (!validate_choice(buf, 4))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            clear_screen();
-            continue;
-        }
-
-        select = atoi(buf);
-
-        switch (select)
-        {
-        case 1:
-            add_department();
-            break;
-        case 2:
-            delete_department();
-            break;
-        case 3:
-            show_department_doctors();
-            break;
-        case 4:
-            show_all_departments();
-            break;
-        case 0:
-            clear_screen();
-            return;
-        default:
-            printf("未知错误: %d\n", select);
-            break;
-        }
-    }
-}
-
 /* 病房管理 */
 void manager_ward_menu()
 {
@@ -1188,8 +1137,8 @@ void manager_bed_menu()
     }
 }
 
-/* 检查记录管理 */
-void manager_exam_records_menu()
+/* 管理员医疗记录管理 */
+void manager_medical_records_menu()
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1197,13 +1146,12 @@ void manager_exam_records_menu()
     {
         clear_screen();
         menu_top();
-        menu_title("检查记录管理");
+        menu_title("管理员医疗记录管理");
         menu_split();
-        menu_item(1, "添加检查记录");
-        menu_item(2, "删除检查记录");
-        menu_item(3, "修改检查记录");
-        menu_item(4, "查询检查记录");
-        menu_item(5, "显示所有检查记录");
+        menu_item(1, "患者就诊全程查询");
+        menu_item(2, "分类记录查询");
+        menu_item(3, "分类记录删除");
+        menu_item(4, "分类记录打印");
         menu_blank();
         menu_item(0, "返回上级菜单");
         menu_bottom();
@@ -1211,7 +1159,7 @@ void manager_exam_records_menu()
         printf("请输入您的选择: ");
         safe_input(buf, MAX_INPUT_LEN);
 
-        if (!validate_choice(buf, 5))
+        if (!validate_choice(buf, 4))
         {
             printf("输入有误，请重新选择！\n");
             wait_enter();
@@ -1224,19 +1172,16 @@ void manager_exam_records_menu()
         switch (select)
         {
         case 1:
-            add_exam_record();
+            query_patients_medical_records();
             break;
         case 2:
-            delete_exam_record();
+            query_medical_records_by_category_menu();
             break;
         case 3:
-            update_exam_record();
+            manager_delete_medical_records_by_category_menu();
             break;
         case 4:
-            query_exam_record();
-            break;
-        case 5:
-            show_all_exam_records();
+            print_medical_records_by_category();
             break;
         case 0:
             clear_screen();
@@ -1248,8 +1193,8 @@ void manager_exam_records_menu()
     }
 }
 
-/* 住院记录管理 */
-void manager_hospitalization_records_menu()
+/* 分类查询医疗记录 */
+void query_medical_records_by_category_menu()
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1257,13 +1202,13 @@ void manager_hospitalization_records_menu()
     {
         clear_screen();
         menu_top();
-        menu_title("住院记录管理");
+        menu_title("分类查询医疗记录");
         menu_split();
-        menu_item(1, "添加住院记录");
-        menu_item(2, "删除住院记录");
-        menu_item(3, "修改住院记录");
-        menu_item(4, "查询住院记录");
-        menu_item(5, "显示所有住院记录");
+        menu_item(1, "挂号记录");
+        menu_item(2, "看诊记录");
+        menu_item(3, "检查记录");
+        menu_item(4, "住院记录");
+        menu_item(5, "处方记录");
         menu_blank();
         menu_item(0, "返回上级菜单");
         menu_bottom();
@@ -1284,19 +1229,19 @@ void manager_hospitalization_records_menu()
         switch (select)
         {
         case 1:
-            add_hospitalization_record();
+            query_registrations();
             break;
         case 2:
-            delete_hospitalization_record();
+            query_visits();
             break;
         case 3:
-            update_hospitalization_record();
+            query_exams();
             break;
         case 4:
-            query_hospitalization_record();
+            query_hospitalizations();
             break;
         case 5:
-            show_all_hospitalization_records();
+            query_prescriptions();
             break;
         case 0:
             clear_screen();
@@ -1308,8 +1253,8 @@ void manager_hospitalization_records_menu()
     }
 }
 
-/* 处方记录管理 */
-void manager_prescription_records_menu()
+/* 分类删除医疗记录 */
+void manager_delete_medical_records_by_category_menu()
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1317,13 +1262,13 @@ void manager_prescription_records_menu()
     {
         clear_screen();
         menu_top();
-        menu_title("处方记录管理");
+        menu_title("分类删除医疗记录");
         menu_split();
-        menu_item(1, "添加处方记录");
-        menu_item(2, "删除处方记录");
-        menu_item(3, "修改处方记录");
-        menu_item(4, "查询处方记录");
-        menu_item(5, "显示所有处方记录");
+        menu_item(1, "挂号记录");
+        menu_item(2, "看诊记录");
+        menu_item(3, "检查记录");
+        menu_item(4, "住院记录");
+        menu_item(5, "处方记录");
         menu_blank();
         menu_item(0, "返回上级菜单");
         menu_bottom();
@@ -1344,19 +1289,19 @@ void manager_prescription_records_menu()
         switch (select)
         {
         case 1:
-            add_prescription_record();
+            delete_registration();
             break;
         case 2:
-            delete_prescription_record();
+            delete_visit();
             break;
         case 3:
-            update_prescription_record();
+            delete_exam();
             break;
         case 4:
-            query_prescription_record();
+            delete_hospitalization();
             break;
         case 5:
-            show_all_prescription_records();
+            delete_prescription();
             break;
         case 0:
             clear_screen();
@@ -1915,11 +1860,11 @@ void doctor_medical_records_menu()
     {
         clear_screen();
         menu_top();
-        menu_title("医疗记录管理");
+        menu_title("医生医疗记录管理");
         menu_split();
-        menu_item(1, "检查记录管理");
-        menu_item(2, "住院记录管理");
-        menu_item(3, "处方记录管理");
+        menu_item(1, "名下患者就诊全程查询");
+        menu_item(2, "名下分类记录查询");
+        menu_item(3, "名下分类记录打印");
         menu_blank();
         menu_item(0, "返回上级菜单");
         menu_bottom();
@@ -1940,193 +1885,13 @@ void doctor_medical_records_menu()
         switch (select)
         {
         case 1:
-            doctor_exam_records_menu();
+            query_patients_medical_records();
             break;
         case 2:
-            doctor_hospitalization_records_menu();
+            query_medical_records_by_category_menu();
             break;
         case 3:
-            doctor_prescription_records_menu();
-            break;
-        case 0:
-            clear_screen();
-            return;
-        default:
-            printf("未知错误: %d\n", select);
-            break;
-        }
-    }
-}
-
-/* 医生检查记录管理 */
-void doctor_exam_records_menu()
-{
-    char buf[MAX_INPUT_LEN];
-    int select;
-    while (1)
-    {
-        clear_screen();
-        menu_top();
-        menu_title("检查记录管理");
-        menu_split();
-        menu_item(1, "添加检查记录");
-        menu_item(2, "删除检查记录");
-        menu_item(3, "修改检查记录");
-        menu_item(4, "查询检查记录");
-        menu_item(5, "显示所有检查记录");
-        menu_blank();
-        menu_item(0, "返回上级菜单");
-        menu_bottom();
-
-        printf("请输入您的选择: ");
-        safe_input(buf, MAX_INPUT_LEN);
-
-        if (!validate_choice(buf, 5))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            clear_screen();
-            continue;
-        }
-
-        select = atoi(buf);
-
-        switch (select)
-        {
-        case 1:
-            add_exam_record();
-            break;
-        case 2:
-            delete_exam_record();
-            break;
-        case 3:
-            update_exam_record();
-            break;
-        case 4:
-            query_exam_record();
-            break;
-        case 5:
-            show_all_exam_records();
-            break;
-        case 0:
-            clear_screen();
-            return;
-        default:
-            printf("未知错误: %d\n", select);
-            break;
-        }
-    }
-}
-
-/* 医生住院记录管理 */
-void doctor_hospitalization_records_menu()
-{
-    char buf[MAX_INPUT_LEN];
-    int select;
-    while (1)
-    {
-        clear_screen();
-        menu_top();
-        menu_title("住院记录管理");
-        menu_split();
-        menu_item(1, "添加住院记录");
-        menu_item(2, "删除住院记录");
-        menu_item(3, "修改住院记录");
-        menu_item(4, "查询住院记录");
-        menu_item(5, "显示所有住院记录");
-        menu_blank();
-        menu_item(0, "返回上级菜单");
-        menu_bottom();
-
-        printf("请输入您的选择: ");
-        safe_input(buf, MAX_INPUT_LEN);
-
-        if (!validate_choice(buf, 5))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            clear_screen();
-            continue;
-        }
-
-        select = atoi(buf);
-
-        switch (select)
-        {
-        case 1:
-            add_hospitalization_record();
-            break;
-        case 2:
-            delete_hospitalization_record();
-            break;
-        case 3:
-            update_hospitalization_record();
-            break;
-        case 4:
-            query_hospitalization_record();
-            break;
-        case 5:
-            show_all_hospitalization_records();
-            break;
-        case 0:
-            clear_screen();
-            return;
-        default:
-            printf("未知错误: %d\n", select);
-            break;
-        }
-    }
-}
-
-/* 医生处方记录管理 */
-void doctor_prescription_records_menu()
-{
-    char buf[MAX_INPUT_LEN];
-    int select;
-    while (1)
-    {
-        clear_screen();
-        menu_top();
-        menu_title("处方记录管理");
-        menu_split();
-        menu_item(1, "添加处方记录");
-        menu_item(2, "删除处方记录");
-        menu_item(3, "修改处方记录");
-        menu_item(4, "查询处方记录");
-        menu_item(5, "显示所有处方记录");
-        menu_blank();
-        menu_item(0, "返回上级菜单");
-        menu_bottom();
-
-        printf("请输入您的选择: ");
-        safe_input(buf, MAX_INPUT_LEN);
-
-        if (!validate_choice(buf, 5))
-        {
-            printf("输入有误，请重新选择！\n");
-            wait_enter();
-            clear_screen();
-            continue;
-        }
-
-        select = atoi(buf);
-
-        switch (select)
-        {
-        case 1:
-            add_prescription_record();
-            break;
-        case 2:
-            delete_prescription_record();
-            break;
-        case 3:
-            update_prescription_record();
-            break;
-        case 4:
-            query_prescription_record();
-            break;
-        case 5:
-            show_all_prescription_records();
+            print_medical_records_by_category();
             break;
         case 0:
             clear_screen();

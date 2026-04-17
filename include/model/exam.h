@@ -28,20 +28,16 @@ void calc_exam_width(Exam *e_head, Visit *v_head, Registration *r_head, Patient 
                      int *visit_w, int *p_w, int *d_w, int *dept_w, int *item_w, int *result_w); // 计算检查表格列宽
 int count_exams(Exam *head);                                                                     // 统计检查数量
 Exam *get_nth_exam(Exam *head, int n);                                                           // 获取第n个检查节点
+int count_exams_for_doctor(Exam *e_head, Registration *reg_head,
+                           const char *d_id); // 统计医生名下的检查数量
+Exam *get_nth_exam_for_doctor(Exam *e_head, Registration *reg_head, const char *d_id,
+                              int n); // 获取医生名下的第n个检查节点
 
 /*
  *检查功能函数
  */
 Exam create_exam(const char *exam_id, const char *visit_id, const char *item, const char *result); // 创建检查
 void append_exam(Exam **head, Exam *new_exam);                                                     // 尾插检查
-
-/*
- *检查系统功能
- */
-void add_exam_record();       // 添加检查记录
-void delete_exam_record();    // 删除检查记录
-void update_exam_record();    // 更新检查记录
-void query_exam_record();     // 查询检查记录
-void show_all_exam_records(); // 显示所有检查记录
+void exam_remove(Exam **head, Exam *target);                                                       // 删除检查
 
 #endif

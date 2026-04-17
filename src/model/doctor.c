@@ -505,6 +505,14 @@ void delete_doctor()
         return;
     }
 
+    if (id[0] == '\0')
+    {
+        printf("输入错误！医生ID不能为空。\n");
+        wait_enter();
+        clear_screen();
+        return;
+    }
+
     Doctor *doctor_head = load_doctors_from_file();
     if (!doctor_head)
     {
@@ -541,27 +549,24 @@ void delete_doctor()
                 return;
             }
 
-            /* 检查是否有关联的未完成挂号记录 */
+            int pending_reg = 0;
             Registration *reg_head = load_registrations_from_file();
-            int has_reg = 0;
             for (Registration *r = reg_head; r; r = r->next)
             {
                 if (strcmp(r->d_id, id) == 0 && r->status == REG_STATUS_PENDING)
-                {
-                    has_reg = 1;
-                    break;
-                }
+                    pending_reg++;
             }
-            if (has_reg)
+            free_registrations(reg_head);
+
+            if (pending_reg > 0)
             {
-                printf("无法删除！该医生仍有未完成的挂号记录，请先处理相关挂号。\n");
-                free_registrations(reg_head);
+                printf("无法删除！该医生仍有未完成的挂号记录，请先处理：\n");
+                printf("  - 挂号记录: %d 条\n", pending_reg);
                 free_doctors(doctor_head);
                 wait_enter();
                 clear_screen();
                 return;
             }
-            free_registrations(reg_head);
 
             if (prev)
                 prev->next = current->next;

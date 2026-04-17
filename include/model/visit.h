@@ -22,7 +22,12 @@ void print_visit(Visit *v, Registration *reg_head, Patient *p_head, Doctor *d_he
 void print_visit_header(int v_w, int p_w, int d_w, int dept_w, int when_w, int st_w, int diag_w); // 打印看诊表头
 void print_visit_line(int v_w, int p_w, int d_w, int dept_w, int when_w, int st_w, int diag_w);   // 打印看诊分隔线
 void calc_visit_width(Visit *v_head, Registration *reg_head, Patient *p_head, Doctor *d_head, int *v_w, int *p_w,
-                      int *d_w, int *dept_w, int *when_w, int *st_w, int *diag_w); // 计算看诊表格列宽
+                      int *d_w, int *dept_w, int *when_w, int *st_w, int *diag_w);    // 计算看诊表格列宽
+int count_visits(Visit *head);                                                        // 统计看诊数量
+Visit *get_nth_visit(Visit *head, int n);                                             // 获取第n个看诊节点
+int count_visits_for_doctor(Visit *v_head, Registration *reg_head, const char *d_id); // 统计医生名下的看诊数量
+Visit *get_nth_visit_for_doctor(Visit *v_head, Registration *reg_head, const char *d_id,
+                                int n); // 获取医生名下的第n个看诊节点
 
 /*
  * 看诊功能函数
@@ -30,6 +35,7 @@ void calc_visit_width(Visit *v_head, Registration *reg_head, Patient *p_head, Do
 Visit create_visit(const char *visit_id, const char *reg_id, time_t when, int status,
                    const char *diagnosis);                  // 创建看诊
 void append_visit(Visit **head, Visit *new_visit);          // 尾插看诊
+void visit_remove(Visit **head, Visit *target);             // 删除看诊
 void update_diagnosis(Visit *visit, const char *diagnosis); // 更新诊断结果
 
 /*

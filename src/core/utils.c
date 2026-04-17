@@ -286,6 +286,14 @@ void print_align(const char *s, int width)
         printf(" ");
 }
 
+/* 检查字符串是否包含子串 */
+int contains_substr(const char *haystack, const char *needle)
+{
+    if (!haystack || !needle || !needle[0])
+        return 0;
+    return strstr(haystack, needle) != NULL;
+}
+
 /* 打开临时文件用于安全写入，写完后用 safe_fclose_commit 提交 */
 FILE *safe_fopen_tmp(const char *final_path, char *tmp_path, size_t tmp_size)
 {
