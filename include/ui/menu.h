@@ -43,13 +43,10 @@ void patient_registration_menu(void);  // 患者挂号预约
 /*
  *医护系统子菜单
  */
-void doctor_personal_info_menu(void);           // 医生个人信息管理
-void doctor_view_patients_menu(void);           // 医生查看患者信息
-void doctor_visit_menu(void);                   // 医生看诊管理
-void doctor_medical_records_menu(void);         // 医生医疗记录管理
-void doctor_exam_records_menu(void);            // 医生检查记录管理
-void doctor_hospitalization_records_menu(void); // 医生住院记录管理
-void doctor_prescription_records_menu(void);    // 医生处方记录管理
+void doctor_personal_info_menu(void);   // 医生个人信息管理
+void doctor_view_patients_menu(void);   // 医生查看患者信息
+void doctor_visit_menu(void);           // 医生看诊管理
+void doctor_medical_records_menu(void); // 医生医疗记录管理
 
 /*
  *共用子菜单
