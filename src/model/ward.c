@@ -361,7 +361,7 @@ void append_ward(Ward **head, Ward *new_ward)
  */
 
 /* 添加病房 */
-void add_ward()
+void add_ward(void)
 {
     char name[MAX_NAME_LEN];
     char type[MAX_NAME_LEN];
@@ -490,7 +490,7 @@ void add_ward()
  * 安全检查: 拒绝删除仍有床位的病房
  * 需先删除病房下所有床位才允许删除
  */
-void delete_ward()
+void delete_ward(void)
 {
     char ward_id[MAX_ID_LEN];
     printf("请输入要删除的病房ID(输入0返回): ");
@@ -594,7 +594,7 @@ void delete_ward()
 }
 
 /* 显示所有病房 */
-void show_all_wards()
+void show_all_wards(void)
 {
     while (1)
     {

@@ -678,7 +678,7 @@ void print_pharmacy_hint(void)
  */
 
 /* 添加药品 */
-void add_drug()
+void add_drug(void)
 {
     Drug *head = load_drugs_from_file();
     Drug *new_drug = (Drug *)malloc(sizeof(Drug));
@@ -853,7 +853,7 @@ void add_drug()
  * 安全检查: 拒绝删除仍有关联药房库存或处方记录的药品
  * 需先清理药房库存并处理相关处方后才允许删除
  */
-void delete_drug()
+void delete_drug(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要删除的药品ID(输入0返回): ");
@@ -959,7 +959,7 @@ void delete_drug()
 }
 
 /* 修改药品信息 */
-void update_drug()
+void update_drug(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要修改的药品ID(输入0返回): ");
@@ -1176,7 +1176,7 @@ void update_drug()
 }
 
 /* 查询药品信息 */
-void query_drug()
+void query_drug(void)
 {
     Drug *head = load_drugs_from_file();
     if (!head)
@@ -1279,7 +1279,7 @@ void query_drug()
 }
 
 /* 显示所有药品 */
-void show_all_drugs()
+void show_all_drugs(void)
 {
     Drug *head = load_drugs_from_file();
     if (!head)
@@ -1341,7 +1341,7 @@ void show_all_drugs()
 }
 
 /* 添加药房 */
-void add_pharmacy()
+void add_pharmacy(void)
 {
     Pharmacy *head = load_pharmacies_from_file();
     Pharmacy *new_node = (Pharmacy *)malloc(sizeof(Pharmacy));
@@ -1429,7 +1429,7 @@ void add_pharmacy()
  * 安全检查: 拒绝删除仍有关联药品库存的药房
  * 需先删除药房名下药品记录后才允许删除药房
  */
-void delete_pharmacy()
+void delete_pharmacy(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要删除的药房ID(输入0返回): ");
@@ -1526,7 +1526,7 @@ void delete_pharmacy()
 }
 
 /* 查询药房信息 */
-void query_pharmacy()
+void query_pharmacy(void)
 {
     Pharmacy *head = load_pharmacies_from_file();
     if (!head)
@@ -1589,7 +1589,7 @@ void query_pharmacy()
 }
 
 /* 显示所有药房 */
-void show_all_pharmacies()
+void show_all_pharmacies(void)
 {
     Pharmacy *head = load_pharmacies_from_file();
     if (!head)
@@ -1660,7 +1660,7 @@ void show_all_pharmacies()
  * 若药房已有该药品则追加数量, 否则新建关联记录
  * 保存失败时回滚两张表到操作前状态
  */
-void stock_in_pharmacy()
+void stock_in_pharmacy(void)
 {
     Pharmacy *p_head = load_pharmacies_from_file();
     Drug *d_head = load_drugs_from_file();
@@ -1852,7 +1852,7 @@ cleanup:
  * 涉及两张表联动: pharmacy_drugs + drugs
  * 保存失败时回滚删除操作
  */
-void delete_drug_from_pharmacy()
+void delete_drug_from_pharmacy(void)
 {
     Pharmacy *p_head = load_pharmacies_from_file();
     Drug *d_head = load_drugs_from_file();
@@ -2077,7 +2077,7 @@ cleanup:
  * 涉及两张表联动: pharmacy_drugs + drugs
  * 保存失败时回滚扣减操作
  */
-void dispense_prescription_drug()
+void dispense_prescription_drug(void)
 {
     if (!g_session.logged_in)
     {
@@ -2355,7 +2355,7 @@ cleanup:
 }
 
 /* 药房库存查询 */
-void show_pharmacy_drugs()
+void show_pharmacy_drugs(void)
 {
     Pharmacy *p_head = load_pharmacies_from_file();
     Drug *d_head = load_drugs_from_file();

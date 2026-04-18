@@ -24,11 +24,11 @@ void append_department(Department **head, Department *new_dept); // 尾插科室
 /*
  * 科室系统功能
  */
-void add_department();          // 添加科室
-void delete_department();       // 删除科室
-void show_department_doctors(); // 显示科室医生
-void show_all_departments();    // 显示所有科室
-void print_all_departments();   // 打印所有科室
-void print_department_hint();   // 打印所有科室可选项
+void add_department(void);          // 添加科室
+void delete_department(void);       // 删除科室
+void show_department_doctors(void); // 显示科室医生
+void show_all_departments(void);    // 显示所有科室
+void print_all_departments(void);   // 打印所有科室
+void print_department_hint(void);   // 打印所有科室可选项
 
 #endif

@@ -351,7 +351,7 @@ void append_bed(Bed **head, Bed *new_bed)
  * 涉及两张表联动: beds + wards(更新容量)
  * 批量添加中途失败时, 回滚已添加的床位节点并恢复病房容量
  */
-void add_bed()
+void add_bed(void)
 {
     Ward *w_head = load_wards_from_file();
     Bed *b_head = load_beds_from_file();
@@ -524,7 +524,7 @@ void add_bed()
  * 涉及两张表联动: beds + wards(减少容量)
  * 保存失败时回滚
  */
-void delete_bed()
+void delete_bed(void)
 {
     Ward *w_head = load_wards_from_file();
     Bed *b_head = load_beds_from_file();
@@ -716,7 +716,7 @@ void delete_bed()
 }
 
 /* 显示所有床位 */
-void show_all_beds()
+void show_all_beds(void)
 {
     Bed *b_head = load_beds_from_file();
     if (!b_head)

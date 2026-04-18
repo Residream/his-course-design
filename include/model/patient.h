@@ -32,19 +32,19 @@ void append_patient(Patient **head, Patient *new_patient);                      
 /*
  *患者系统功能
  */
-void add_patient();                             // 添加患者
-void delete_patient();                          // 删除患者
-void update_patient();                          // 更新患者信息
-void query_patient();                           // 查询患者信息
-void show_all_patients();                       // 显示所有患者信息
-void patient_view_my_info();                    // 患者查看个人信息
-void patient_update_my_info();                  // 患者修改个人信息
-void patient_registration();                    // 患者挂号预约
-void patient_query_my_registrations();          // 查询我的挂号
-void patient_cancel_registration();             // 取消挂号预约
-void patient_view_my_visits_records();          // 查看我的就诊记录
-void patient_view_my_exams_records();           // 查看我的检查记录
-void patient_view_my_hospitalization_records(); // 查看我的住院记录
-void patient_view_my_prescription_records();    // 查看我的处方记录
+void add_patient(void);                             // 添加患者
+void delete_patient(void);                          // 删除患者
+void update_patient(void);                          // 更新患者信息
+void query_patient(void);                           // 查询患者信息
+void show_all_patients(void);                       // 显示所有患者信息
+void patient_view_my_info(void);                    // 患者查看个人信息
+void patient_update_my_info(void);                  // 患者修改个人信息
+void patient_registration(void);                    // 患者挂号预约
+void patient_query_my_registrations(void);          // 查询我的挂号
+void patient_cancel_registration(void);             // 取消挂号预约
+void patient_view_my_visits_records(void);          // 查看我的就诊记录
+void patient_view_my_exams_records(void);           // 查看我的检查记录
+void patient_view_my_hospitalization_records(void); // 查看我的住院记录
+void patient_view_my_prescription_records(void);    // 查看我的处方记录
 
 #endif

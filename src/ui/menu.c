@@ -26,7 +26,7 @@
  */
 
 /* 顶部边框 */
-static void menu_top()
+static void menu_top(void)
 {
     printf("╔");
     for (int i = 0; i < MENU_WIDTH; i++)
@@ -35,7 +35,7 @@ static void menu_top()
 }
 
 /* 底部边框 */
-static void menu_bottom()
+static void menu_bottom(void)
 {
     printf("╚");
     for (int i = 0; i < MENU_WIDTH; i++)
@@ -44,7 +44,7 @@ static void menu_bottom()
 }
 
 /* 中间分隔线 */
-static void menu_split()
+static void menu_split(void)
 {
     printf("╠");
     for (int i = 0; i < MENU_WIDTH; i++)
@@ -53,7 +53,7 @@ static void menu_split()
 }
 
 /* 空行 */
-static void menu_blank()
+static void menu_blank(void)
 {
     printf("║");
     for (int i = 0; i < MENU_WIDTH; i++)
@@ -112,7 +112,7 @@ static void menu_item(int num, const char *text)
  */
 
 /* 登录界面 */
-void login_menu()
+void login_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -262,7 +262,7 @@ void login_menu()
 }
 
 /* 患者注册登录界面 */
-void patient_pre_menu()
+void patient_pre_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -363,7 +363,7 @@ void patient_pre_menu()
 }
 
 /* 患者系统主界面 */
-void patient_main_menu()
+void patient_main_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -429,7 +429,7 @@ void patient_main_menu()
 }
 
 /* 医护系统主界面 */
-void doctor_main_menu()
+void doctor_main_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -495,7 +495,7 @@ void doctor_main_menu()
 }
 
 /* 管理员系统主界面 */
-void manager_main_menu()
+void manager_main_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -565,7 +565,7 @@ void manager_main_menu()
  */
 
 /* 患者信息管理 */
-void manager_patient_menu()
+void manager_patient_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -625,7 +625,7 @@ void manager_patient_menu()
 }
 
 /* 医生和科室管理 */
-void manager_doctor_and_department_menu()
+void manager_doctor_and_department_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -673,7 +673,7 @@ void manager_doctor_and_department_menu()
 }
 
 /* 病房和床位管理 */
-void manager_ward_and_bed_menu()
+void manager_ward_and_bed_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -721,7 +721,7 @@ void manager_ward_and_bed_menu()
 }
 
 /* 医生管理 */
-void manager_doctor_menu()
+void manager_doctor_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -781,7 +781,7 @@ void manager_doctor_menu()
 }
 
 /* 科室管理 */
-void manager_department_menu()
+void manager_department_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -837,7 +837,7 @@ void manager_department_menu()
 }
 
 /* 药品和药房管理 */
-void manager_drug_menu()
+void manager_drug_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1046,7 +1046,7 @@ void manager_drug_menu()
 }
 
 /* 病房管理 */
-void manager_ward_menu()
+void manager_ward_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1098,7 +1098,7 @@ void manager_ward_menu()
 }
 
 /* 床位管理 */
-void manager_bed_menu()
+void manager_bed_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1150,7 +1150,7 @@ void manager_bed_menu()
 }
 
 /* 管理员医疗记录管理 */
-void manager_medical_records_menu()
+void manager_medical_records_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1206,7 +1206,7 @@ void manager_medical_records_menu()
 }
 
 /* 分类查询医疗记录 */
-void query_medical_records_by_category_menu()
+void query_medical_records_by_category_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1266,7 +1266,7 @@ void query_medical_records_by_category_menu()
 }
 
 /* 分类删除医疗记录 */
-void manager_delete_medical_records_by_category_menu()
+void manager_delete_medical_records_by_category_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1326,7 +1326,7 @@ void manager_delete_medical_records_by_category_menu()
 }
 
 /* 数据分析 */
-void manager_analytics_menu()
+void manager_analytics_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1390,7 +1390,7 @@ void manager_analytics_menu()
  */
 
 /* 患者个人信息管理 */
-void patient_personal_info_menu()
+void patient_personal_info_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1439,7 +1439,7 @@ void patient_personal_info_menu()
 }
 
 /* 患者挂号预约 */
-void patient_registration_menu()
+void patient_registration_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1496,7 +1496,7 @@ void patient_registration_menu()
  */
 
 /* 医生个人信息管理 */
-void doctor_personal_info_menu()
+void doctor_personal_info_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1545,7 +1545,7 @@ void doctor_personal_info_menu()
 }
 
 /* 医生查看患者信息 */
-void doctor_view_patients_menu()
+void doctor_view_patients_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;
@@ -1599,7 +1599,7 @@ void doctor_view_patients_menu()
  * 开始看诊时涉及两张表联动: registrations(状态->已就诊) + visits(新增记录)
  * 保存失败时回滚两张表, 使用 goto cleanup 统一释放内存
  */
-void doctor_visit_menu()
+void doctor_visit_menu(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "doctor") != 0)
     {
@@ -1866,7 +1866,7 @@ void doctor_visit_menu()
 }
 
 /* 医生医疗记录管理 */
-void doctor_medical_records_menu()
+void doctor_medical_records_menu(void)
 {
     char buf[MAX_INPUT_LEN];
     int select;

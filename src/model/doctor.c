@@ -355,7 +355,7 @@ void append_doctor(Doctor **head, Doctor *new_doctor)
  */
 
 /* 添加医生 */
-void add_doctor()
+void add_doctor(void)
 {
     char name[MAX_NAME_LEN];
     char gender[MAX_GENDER_LEN];
@@ -487,7 +487,7 @@ void add_doctor()
  * 安全检查: 拒绝删除仍有未完成挂号的医生
  * 需先处理完所有关联的活跃挂号记录才允许删除
  */
-void delete_doctor()
+void delete_doctor(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要删除的医生ID(输入0返回): ");
@@ -590,7 +590,7 @@ void delete_doctor()
 }
 
 /* 更新医生信息 */
-void update_doctor()
+void update_doctor(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要更新的医生ID(输入0返回): ");
@@ -816,7 +816,7 @@ void update_doctor()
  *   2. 按姓名子串模糊匹配(strstr)
  *   3. 按科室子串模糊匹配(strstr)
  */
-void query_doctor()
+void query_doctor(void)
 {
     Doctor *doctor_head = load_doctors_from_file();
     if (!doctor_head)
@@ -895,7 +895,7 @@ void query_doctor()
 }
 
 /* 显示所有医生信息 */
-void show_all_doctors()
+void show_all_doctors(void)
 {
     Doctor *doctor_head = load_doctors_from_file();
     if (!doctor_head)
@@ -965,7 +965,7 @@ void show_all_doctors()
 }
 
 /* 医生查看个人信息 */
-void doctor_view_my_info()
+void doctor_view_my_info(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "doctor") != 0)
     {
@@ -1008,7 +1008,7 @@ void doctor_view_my_info()
 }
 
 /* 医生修改个人信息 */
-void doctor_update_my_info()
+void doctor_update_my_info(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "doctor") != 0)
     {
@@ -1252,7 +1252,7 @@ void doctor_update_my_info()
 }
 
 /* 医生查看挂号记录 */
-void doctor_view_patient_registrations()
+void doctor_view_patient_registrations(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "doctor") != 0)
     {

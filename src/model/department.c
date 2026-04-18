@@ -152,7 +152,7 @@ void append_department(Department **head, Department *new_dept)
 /*
  * 科室系统功能
  */
-void add_department()
+void add_department(void)
 {
     char name[MAX_NAME_LEN];
 
@@ -222,7 +222,7 @@ void add_department()
  * 安全检查: 拒绝删除仍有医生挂靠的科室
  * 需先将科室下所有医生转到其他科室才允许删除
  */
-void delete_department()
+void delete_department(void)
 {
     char name[MAX_NAME_LEN];
 
@@ -337,7 +337,7 @@ void delete_department()
 }
 
 /* 显示科室医生 */
-void show_department_doctors()
+void show_department_doctors(void)
 {
     char name[MAX_NAME_LEN];
 
@@ -435,7 +435,7 @@ void show_department_doctors()
 }
 
 /* 显示所有科室 */
-void show_all_departments()
+void show_all_departments(void)
 {
     while (1)
     {
@@ -448,7 +448,7 @@ void show_all_departments()
 }
 
 /* 打印所有科室 */
-void print_all_departments()
+void print_all_departments(void)
 {
     Department *dept_head = load_departments_from_file();
     if (!dept_head)
@@ -470,7 +470,7 @@ void print_all_departments()
 }
 
 /* 打印所有科室可选项 */
-void print_department_hint()
+void print_department_hint(void)
 {
     Department *dept_head = load_departments_from_file();
     if (!dept_head)

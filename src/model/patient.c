@@ -362,7 +362,7 @@ void append_patient(Patient **head, Patient *new_patient)
  */
 
 /* 添加患者 */
-void add_patient()
+void add_patient(void)
 {
     char name[MAX_NAME_LEN];
     char gender[MAX_GENDER_LEN];
@@ -533,7 +533,7 @@ void add_patient()
  * 安全检查: 拒绝删除仍有未完成挂号或住院中的患者
  * 需先处理完所有关联的活跃记录才允许删除
  */
-void delete_patient()
+void delete_patient(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要删除的患者ID(输入0返回): ");
@@ -638,7 +638,7 @@ void delete_patient()
 }
 
 /* 更新患者信息 */
-void update_patient()
+void update_patient(void)
 {
     char id[MAX_ID_LEN];
     printf("请输入要更新的患者ID(输入0返回): ");
@@ -896,7 +896,7 @@ void update_patient()
  *   1. 按患者ID精确匹配
  *   2. 按姓名子串模糊匹配(strstr)
  */
-void query_patient()
+void query_patient(void)
 {
     Patient *patient_head = load_patients_from_file();
     if (!patient_head)
@@ -972,7 +972,7 @@ void query_patient()
 }
 
 /* 显示所有患者信息 */
-void show_all_patients()
+void show_all_patients(void)
 {
     Patient *patient_head = load_patients_from_file();
     if (!patient_head)
@@ -1041,7 +1041,7 @@ void show_all_patients()
 }
 
 /* 患者查看个人信息 */
-void patient_view_my_info()
+void patient_view_my_info(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1088,7 +1088,7 @@ void patient_view_my_info()
  * 修改密码时需先验证旧密码, 通过后才允许设置新密码
  * 每次修改立即持久化到文件
  */
-void patient_update_my_info()
+void patient_update_my_info(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1363,7 +1363,7 @@ void patient_update_my_info()
     }
 }
 
-void patient_registration()
+void patient_registration(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1506,7 +1506,7 @@ void patient_registration()
 }
 
 /* 查询我的挂号 */
-void patient_query_my_registrations()
+void patient_query_my_registrations(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1563,7 +1563,7 @@ void patient_query_my_registrations()
 }
 
 /* 取消挂号预约 */
-void patient_cancel_registration()
+void patient_cancel_registration(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1673,7 +1673,7 @@ void patient_cancel_registration()
 }
 
 /* 患者查看我的就诊记录 */
-void patient_view_my_visits_records()
+void patient_view_my_visits_records(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1732,7 +1732,7 @@ void patient_view_my_visits_records()
 }
 
 /* 患者查看我的检查记录 */
-void patient_view_my_exams_records()
+void patient_view_my_exams_records(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1794,7 +1794,7 @@ void patient_view_my_exams_records()
 }
 
 /* 患者查看我的住院记录 */
-void patient_view_my_hospitalization_records()
+void patient_view_my_hospitalization_records(void)
 {
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)
     {
@@ -1859,7 +1859,7 @@ void patient_view_my_hospitalization_records()
 }
 
 /* 患者查看我的处方记录 */
-void patient_view_my_prescription_records()
+void patient_view_my_prescription_records(void)
 {
     /* 1. 权限与登录态校验 */
     if (!g_session.logged_in || strcmp(g_session.role, "patient") != 0)

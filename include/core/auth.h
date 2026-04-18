@@ -22,6 +22,6 @@ int patient_login_by_file(const char *file, const char *id, const char *password
 int doctor_login_by_file(const char *file, const char *id, const char *password);
 
 /* 患者注册 */
-void patient_register();
+void patient_register(void);
 
 #endif

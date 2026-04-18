@@ -36,8 +36,8 @@ void append_bed(Bed **head, Bed *new_bed);                                      
 /*
  * 床位系统功能
  */
-void add_bed();       // 添加床位
-void delete_bed();    // 删除床位
-void show_all_beds(); // 显示所有床位
+void add_bed(void);       // 添加床位
+void delete_bed(void);    // 删除床位
+void show_all_beds(void); // 显示所有床位
 
 #endif

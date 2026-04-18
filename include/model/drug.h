@@ -49,20 +49,20 @@ void free_pharmacy_drugs(PharmacyDrug *head);        // 释放药房药品数据
 /*
  * 药品系统功能
  */
-void add_drug();       // 添加药品
-void delete_drug();    // 删除药品
-void update_drug();    // 修改药品信息
-void query_drug();     // 查询药品信息
-void show_all_drugs(); // 显示所有药品
+void add_drug(void);       // 添加药品
+void delete_drug(void);    // 删除药品
+void update_drug(void);    // 修改药品信息
+void query_drug(void);     // 查询药品信息
+void show_all_drugs(void); // 显示所有药品
 
-void add_pharmacy();        // 添加药房
-void delete_pharmacy();     // 删除药房
-void query_pharmacy();      // 查询药房信息
-void show_all_pharmacies(); // 显示所有药房
+void add_pharmacy(void);        // 添加药房
+void delete_pharmacy(void);     // 删除药房
+void query_pharmacy(void);      // 查询药房信息
+void show_all_pharmacies(void); // 显示所有药房
 
-void stock_in_pharmacy();          // 药房入库
-void delete_drug_from_pharmacy();  // 从药房删除药品
-void dispense_prescription_drug(); // 处方发药
-void show_pharmacy_drugs();        // 药房库存查询
+void stock_in_pharmacy(void);          // 药房入库
+void delete_drug_from_pharmacy(void);  // 从药房删除药品
+void dispense_prescription_drug(void); // 处方发药
+void show_pharmacy_drugs(void);        // 药房库存查询
 
 #endif

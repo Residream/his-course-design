@@ -33,13 +33,13 @@ void append_doctor(Doctor **head, Doctor *new_doctor); // 尾插医生
 /*
  * 医生系统功能
  */
-void add_doctor();                        // 添加医生
-void delete_doctor();                     // 删除医生
-void update_doctor();                     // 更新医生信息
-void query_doctor();                      // 查询医生信息
-void show_all_doctors();                  // 显示所有医生信息
-void doctor_view_my_info();               // 医生查看个人信息
-void doctor_update_my_info();             // 医生修改个人信息
-void doctor_view_patient_registrations(); // 医生查看挂号信息
+void add_doctor(void);                        // 添加医生
+void delete_doctor(void);                     // 删除医生
+void update_doctor(void);                     // 更新医生信息
+void query_doctor(void);                      // 查询医生信息
+void show_all_doctors(void);                  // 显示所有医生信息
+void doctor_view_my_info(void);               // 医生查看个人信息
+void doctor_update_my_info(void);             // 医生修改个人信息
+void doctor_view_patient_registrations(void); // 医生查看挂号信息
 
 #endif
