@@ -755,7 +755,7 @@ void add_drug()
     char price_input[32];
     while (1)
     {
-        printf("请输入药品价格(输入0返回): ");
+        printf("请输入药品价格(正数 | 输入0返回): ");
         safe_input(price_input, sizeof(price_input));
 
         if (strcmp(price_input, "0") == 0)
@@ -768,7 +768,7 @@ void add_drug()
         char *endptr;
         errno = 0;
         double p_d = strtod(price_input, &endptr);
-        if (endptr == price_input || *endptr != '\0' || p_d < 0)
+        if (endptr == price_input || *endptr != '\0' || p_d <= 0)
         {
             printf("输入有误，请重新输入正确价格！\n");
             continue;
@@ -1150,17 +1150,17 @@ void update_drug()
         case 4:
             while (1)
             {
-                printf("请输入新的价格(输入q取消): ");
+                printf("请输入新的价格(正数 | 输入0取消): ");
                 safe_input(buf, sizeof(buf));
-                if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+                if (strcmp(buf, "0") == 0)
                     break;
 
                 char *endptr;
                 errno = 0;
                 double p_d = strtod(buf, &endptr);
-                if (endptr == buf || *endptr != '\0' || p_d < 0)
+                if (endptr == buf || *endptr != '\0' || p_d <= 0)
                 {
-                    printf("输入有误，请输入非负数字价格！\n");
+                    printf("输入有误，请输入大于0的数字价格！\n");
                     continue;
                 }
                 if (p_d > MAX_DRUG_PRICE)
