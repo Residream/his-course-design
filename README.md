@@ -83,7 +83,7 @@ Pharmacy ── PharmacyDrug ── Drug
 | `drugs.txt`            | `id\|generic_name\|trade_name\|alias\|price\|stock\|department`                |
 | `pharmacies.txt`       | `id\|name\|location`                                                           |
 | `pharmacy_drugs.txt`   | `pharmacy_id\|drug_id\|quantity`                                               |
-| `prescriptions.txt`    | `pr_id\|visit_id\|p_id\|d_id\|drug_id\|dose\|frequency`                        |
+| `prescriptions.txt`    | `pr_id\|visit_id\|d_id\|p_id\|drug_id\|dose\|frequency\|dispensed`             |
 
 ---
 
@@ -235,7 +235,9 @@ python tools/gen_data.py
 - 删除医生前检查是否有未完成的挂号记录
 - 删除患者前检查是否有未完成的挂号或进行中的住院记录
 - 删除病房前检查是否有关联的床位记录
-- 删除药品/药房时级联清除 `pharmacy_drugs` 中的关联记录
+- 删除药品/药房前检查是否有关联 `pharmacy_drugs`，有则拒绝删除；需先用"从药房删除药品"逐一清空
+- 删除药品前检查是否有关联处方，有则拒绝删除
+- 系统强制不变式 `drug.stock = Σ pharmacy_drugs.quantity`：添加药品默认 stock=0，仅通过"药房入库"增加；从药房删除药品时同步扣减全局库存
 - 删除已占用床位时拒绝操作
 - 发药时同时检查药房库存和全局药品库存，防止库存变为负数
 
