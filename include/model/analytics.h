@@ -21,6 +21,8 @@
 #define ANALYTICS_RATE_COL_MIN_WIDTH 6    // 百分比列最小宽度, 容纳 "100.0%"
 #define ANALYTICS_STATUS_COL_MIN_WIDTH 10 // 状态列最小宽度, 容纳 "⚠ 补货" 等
 #define ANALYTICS_TREND_COL_MIN_WIDTH 10  // 趋势列最小宽度, 容纳 "↑ +100%"
+#define ANALYTICS_DAYS_COL_MIN_WIDTH 8    // 天数列最小宽度, 容纳 "平均天数" 表头
+#define ANALYTICS_COST_COL_MIN_WIDTH 10   // 金额列最小宽度, 容纳 "金额(元)" 表头
 
 /*
  * 聚合上限

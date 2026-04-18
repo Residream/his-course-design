@@ -94,8 +94,11 @@ static void calc_ward_utilization_width(Ward *w_head, int *name_w, int *cap_w, i
     *bar_w = str_width("利用率分布");
 
     /* 进度条固定宽度 BAR_WIDTH 格, 显示宽度 = 1([) + BAR_WIDTH + 1(]) */
-    if (ANALYTICS_BAR_DISPLAY_WIDTH > *bar_w)
+    if (*bar_w < ANALYTICS_BAR_DISPLAY_WIDTH)
         *bar_w = ANALYTICS_BAR_DISPLAY_WIDTH;
+    /* 利用率列宽至少容纳 "100.0%" */
+    if (*rate_w < ANALYTICS_RATE_COL_MIN_WIDTH)
+        *rate_w = ANALYTICS_RATE_COL_MIN_WIDTH;
 
     /* 遍历计算最大列宽 */
     for (Ward *w = w_head; w; w = w->next)
@@ -115,10 +118,6 @@ static void calc_ward_utilization_width(Ward *w_head, int *name_w, int *cap_w, i
         if (ow > *occ_w)
             *occ_w = ow;
     }
-
-    /* 利用率列宽至少容纳 "100.0%" */
-    if (*rate_w < ANALYTICS_RATE_COL_MIN_WIDTH)
-        *rate_w = ANALYTICS_RATE_COL_MIN_WIDTH;
 }
 
 /* 打印病房利用率表头 */
@@ -168,19 +167,16 @@ static void print_ward_utilization_line(Ward *w, int name_w, int cap_w, int occ_
     printf(" |\n");
 }
 
-/* 打印病房利用率分隔线 */
-static void print_ward_utilization_line_separator(int name_w, int cap_w, int occ_w, int rate_w, int bar_w)
-{
-    int widths[] = {name_w, cap_w, occ_w, rate_w, bar_w};
-    print_analytics_line(5, widths);
-}
-
 /* 计算病房周转率表格列宽 */
 static void calc_ward_turnover_width(WardTurnoverStats *stats, int count, int *name_w, int *dis_w, int *turn_w)
 {
     *name_w = str_width("病房名称");
     *dis_w = str_width("出院人次");
     *turn_w = str_width("周转率");
+
+    /* 周转率格式 "0.00" 最多5字符 */
+    if (*turn_w < ANALYTICS_RATE_COL_MIN_WIDTH)
+        *turn_w = ANALYTICS_RATE_COL_MIN_WIDTH;
 
     for (int i = 0; i < count; i++)
     {
@@ -194,10 +190,6 @@ static void calc_ward_turnover_width(WardTurnoverStats *stats, int count, int *n
         if (dw > *dis_w)
             *dis_w = dw;
     }
-
-    /* 周转率格式 "0.00" 最多5字符 */
-    if (*turn_w < ANALYTICS_RATE_COL_MIN_WIDTH)
-        *turn_w = ANALYTICS_RATE_COL_MIN_WIDTH;
 }
 
 /* 打印病房周转率表头 */
@@ -301,13 +293,6 @@ static void print_ward_empty_line(WardEmptyStats *stat, int rank, int rank_w, in
     printf(" |\n");
 }
 
-/* 打印空床率排名分隔线 */
-static void print_ward_empty_line_separator(int rank_w, int name_w, int empty_w, int rate_w, int bar_w)
-{
-    int widths[] = {rank_w, name_w, empty_w, rate_w, bar_w};
-    print_analytics_line(5, widths);
-}
-
 /* 空床率降序比较函数 */
 static int compare_ward_empty_desc(const void *a, const void *b)
 {
@@ -377,13 +362,6 @@ static void print_ward_stay_line(WardStayStats *stat, int max_avg, int name_w, i
     printf(" | ");
     print_analytics_align(hbar_buf, bar_w);
     printf(" |\n");
-}
-
-/* 打印住院天数分隔线 */
-static void print_ward_stay_line_separator(int name_w, int cnt_w, int avg_w, int bar_w)
-{
-    int widths[] = {name_w, cnt_w, avg_w, bar_w};
-    print_analytics_line(4, widths);
 }
 
 /* ========== 病房利用率分析 ==========
@@ -635,7 +613,8 @@ void analytics_ward_utilization(void)
             for (int i = start; i < end; i++)
                 print_ward_utilization_line(ward_arr[i], name_w, cap_w, occ_w, rate_w, bar_w);
 
-            print_ward_utilization_line_separator(name_w, cap_w, occ_w, rate_w, bar_w);
+            int u_widths[] = {name_w, cap_w, occ_w, rate_w, bar_w};
+            print_analytics_line(5, u_widths);
             printf("全院综合利用率: %s %.1f%%  (%d/%d)\n", total_bar, total_ratio * 100.0f, total_occupied,
                    total_capacity);
             break;
@@ -656,7 +635,8 @@ void analytics_ward_utilization(void)
             for (int i = start; i < end; i++)
                 print_ward_empty_line(&empties[i], i + 1, r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
 
-            print_ward_empty_line_separator(r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w);
+            int r_widths[] = {r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w};
+            print_analytics_line(5, r_widths);
             break;
         }
         case 3: {
@@ -665,7 +645,8 @@ void analytics_ward_utilization(void)
             for (int i = start; i < end; i++)
                 print_ward_stay_line(&stays[i], max_int, s_name_w, s_cnt_w, s_avg_w, s_bar_w);
 
-            print_ward_stay_line_separator(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
+            int s_widths[] = {s_name_w, s_cnt_w, s_avg_w, s_bar_w};
+            print_analytics_line(4, s_widths);
             break;
         }
         }
@@ -738,13 +719,13 @@ void analytics_ward_utilization(void)
 typedef struct DeptWorkloadStats
 {
     char name[MAX_NAME_LEN];
-    int total;      // 总挂号量
-    int done;       // 已完成(已就诊)
-    int canceled;   // 已取消
-    int recent_30d; // 近30天挂号量
-    int prev_30d;   // 前30天挂号量
+    int total;       /* 总挂号量 */
+    int done;        /* 已完成(已就诊) */
+    int canceled;    /* 已取消 */
+    int recent_30d;  /* 近30天挂号量 */
+    int prev_30d;    /* 前30天挂号量 */
     float cancel_rate;
-    float trend_pct; // 趋势百分比
+    float trend_pct; /* 趋势百分比 */
 } DeptWorkloadStats;
 
 /* 医生接诊量统计结构体 */
@@ -778,6 +759,8 @@ static void calc_dept_workload_width(DeptWorkloadStats *stats, int count, int *d
     /* 趋势列至少容纳 "↑ +100%" 约10字符 */
     if (*trend_w < ANALYTICS_TREND_COL_MIN_WIDTH)
         *trend_w = ANALYTICS_TREND_COL_MIN_WIDTH;
+    if (*rate_w < ANALYTICS_RATE_COL_MIN_WIDTH)
+        *rate_w = ANALYTICS_RATE_COL_MIN_WIDTH;
 
     for (int i = 0; i < count; i++)
     {
@@ -801,9 +784,6 @@ static void calc_dept_workload_width(DeptWorkloadStats *stats, int count, int *d
         if (cw > *cancel_w)
             *cancel_w = cw;
     }
-
-    if (*rate_w < ANALYTICS_RATE_COL_MIN_WIDTH)
-        *rate_w = ANALYTICS_RATE_COL_MIN_WIDTH;
 }
 
 /* 打印科室门诊量表头 */
@@ -877,8 +857,8 @@ static void print_dept_workload_line(DeptWorkloadStats *stat, int dept_w, int to
 }
 
 /* 计算医生接诊量表格列宽 */
-static void calc_doctor_visit_width(DoctorVisitStats *stats, int count, int max_visits, int *rank_w, int *id_w,
-                                    int *dept_w, int *cnt_w, int *bar_w)
+static void calc_doctor_visit_width(DoctorVisitStats *stats, int count, int *rank_w, int *id_w, int *dept_w, int *cnt_w,
+                                    int *bar_w)
 {
     *rank_w = str_width("排名");
     *id_w = str_width("工号");
@@ -907,8 +887,6 @@ static void calc_doctor_visit_width(DoctorVisitStats *stats, int count, int max_
         if (nw > *id_w)
             *id_w = nw;
     }
-
-    (void)max_visits;
 }
 
 /* 打印医生接诊量表头 */
@@ -1146,7 +1124,7 @@ void analytics_department_workload(void)
         max_visits = 1;
 
     int r_rank_w, r_id_w, r_dept_w, r_cnt_w, r_bar_w;
-    calc_doctor_visit_width(doc_stats, top_n, max_visits, &r_rank_w, &r_id_w, &r_dept_w, &r_cnt_w, &r_bar_w);
+    calc_doctor_visit_width(doc_stats, top_n, &r_rank_w, &r_id_w, &r_dept_w, &r_cnt_w, &r_bar_w);
 
     /* ===== 分类分页交互 ===== */
 
@@ -1304,15 +1282,15 @@ static void calc_ward_hosp_stats_width(WardHospStats *stats, int count, int *nam
     *min_w = str_width("最短天数");
     *max_w = str_width("最长天数");
 
+    if (*avg_w < ANALYTICS_DAYS_COL_MIN_WIDTH)
+        *avg_w = ANALYTICS_DAYS_COL_MIN_WIDTH;
+
     for (int i = 0; i < count; i++)
     {
         int nw = str_width(stats[i].name);
         if (nw > *name_w)
             *name_w = nw;
     }
-
-    if (*avg_w < 8)
-        *avg_w = 8;
 }
 
 /* 打印病房住院统计表头 */
@@ -1426,9 +1404,8 @@ static void print_dept_ward_matrix_header(int dept_w, Ward *w_head, const int wa
     for (Ward *w = w_head; w; w = w->next, idx++)
     {
         print_analytics_align(w->name, ward_widths[idx]);
-        printf(" | ");
+        printf(w->next ? " | " : " |\n");
     }
-    printf("\n");
 
     print_dept_ward_matrix_line(dept_w, w_head, ward_widths);
 }
@@ -1447,9 +1424,8 @@ static void print_dept_ward_matrix_row(DeptWardMatrixRow *row, int dept_w, Ward 
         char tmp[16];
         snprintf(tmp, sizeof(tmp), "%d", row->counts[idx]);
         print_analytics_align(tmp, ward_widths[idx]);
-        printf(" | ");
+        printf(w->next ? " | " : " |\n");
     }
-    printf("\n");
 }
 
 /* ========== 住院分析与病房优化 ==========
@@ -1888,8 +1864,8 @@ static int compare_drug_usage_desc(const void *a, const void *b)
 }
 
 /* 计算药品排行表格列宽 */
-static void calc_drug_rank_width(DrugUsageStats *stats, int count, int total_pr, int *rank_w, int *name_w, int *cnt_w,
-                                 int *pct_w, int *bar_w)
+static void calc_drug_rank_width(DrugUsageStats *stats, int count, int *rank_w, int *name_w, int *cnt_w, int *pct_w,
+                                 int *bar_w)
 {
     *rank_w = str_width("排名");
     *name_w = str_width("药品名称");
@@ -1908,8 +1884,6 @@ static void calc_drug_rank_width(DrugUsageStats *stats, int count, int total_pr,
         if (nw > *name_w)
             *name_w = nw;
     }
-
-    (void)total_pr;
 }
 
 /* 打印药品排行表头 */
@@ -1966,8 +1940,8 @@ static void calc_dept_drug_cost_width(DeptDrugCostStats *stats, int count, int *
     *cnt_w = str_width("处方次数");
     *cost_w = str_width("金额(元)");
 
-    if (*cost_w < 10)
-        *cost_w = 10;
+    if (*cost_w < ANALYTICS_COST_COL_MIN_WIDTH)
+        *cost_w = ANALYTICS_COST_COL_MIN_WIDTH;
 
     for (int i = 0; i < count; i++)
     {
@@ -2168,7 +2142,7 @@ void analytics_drug_usage(void)
         max_count = 1;
 
     int rank_w, dname_w, cnt_w, pct_w, bar_w;
-    calc_drug_rank_width(drug_stats, top_n, total_pr, &rank_w, &dname_w, &cnt_w, &pct_w, &bar_w);
+    calc_drug_rank_width(drug_stats, top_n, &rank_w, &dname_w, &cnt_w, &pct_w, &bar_w);
 
     /* ===== 第二部分预计算：科室用药金额 ===== */
     char dept_names[ANALYTICS_MAX_DEPT_COUNT][MAX_NAME_LEN];
@@ -2428,12 +2402,11 @@ typedef struct InpatientAlertStats
     char ward_name[MAX_NAME_LEN];
     int stayed_days;
     float ward_avg;
-    int is_overdue; // 1=超期, 0=正常
+    int is_overdue; /* 1=超期, 0=正常 */
 } InpatientAlertStats;
 
 /* 计算住院天数分布表格列宽 */
-static void calc_stay_bucket_width(StayBucketStats *stats, int count, int max_count, int *label_w, int *cnt_w,
-                                   int *bar_w)
+static void calc_stay_bucket_width(StayBucketStats *stats, int count, int *label_w, int *cnt_w, int *bar_w)
 {
     *label_w = str_width("天数区间");
     *cnt_w = str_width("人次");
@@ -2448,8 +2421,6 @@ static void calc_stay_bucket_width(StayBucketStats *stats, int count, int max_co
         if (lw > *label_w)
             *label_w = lw;
     }
-
-    (void)max_count;
 }
 
 /* 打印住院天数分布表头 */
@@ -2637,7 +2608,7 @@ void analytics_hospitalization_duration(void)
     }
 
     int label_w, bcnt_w, bbar_w;
-    calc_stay_bucket_width(buckets, ANALYTICS_STAY_BUCKET_COUNT, max_bucket, &label_w, &bcnt_w, &bbar_w);
+    calc_stay_bucket_width(buckets, ANALYTICS_STAY_BUCKET_COUNT, &label_w, &bcnt_w, &bbar_w);
 
     float overall_avg = (total_discharged > 0) ? (float)total_stay_days / total_discharged : 0.0f;
 
@@ -2833,7 +2804,8 @@ void analytics_hospitalization_duration(void)
             print_ward_stay_header(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
             for (int i = start; i < end; i++)
                 print_ward_stay_line(&ward_stays[i], max_int, s_name_w, s_cnt_w, s_avg_w, s_bar_w);
-            print_ward_stay_line_separator(s_name_w, s_cnt_w, s_avg_w, s_bar_w);
+            int s_widths[] = {s_name_w, s_cnt_w, s_avg_w, s_bar_w};
+            print_analytics_line(4, s_widths);
             break;
         }
 
