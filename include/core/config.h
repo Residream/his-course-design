@@ -20,6 +20,8 @@
 #define PAGE_SIZE 10                        // 分页显示时每页记录数
 #define ROLE_MAX_LEN 16                     // 会话角色字符串最大长度
 #define HASH_HEX_LEN 64                     // sha256十六进制字符串有效长度(不含'\0')
+#define MAX_DRUG_PRICE 99999.99f            // 药品价格上限
+#define MAX_DRUG_STOCK 100000               // 药品库存上限
 
 /* 数据文件路径 */
 #define PATIENTS_FILE "../data/patients.txt"                 // 患者数据文件
