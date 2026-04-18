@@ -1,8 +1,8 @@
 /*
  * 工具函数模块
  */
-#ifndef utils_h
-#define utils_h
+#ifndef UTILS_H
+#define UTILS_H
 
 #include <stdio.h>
 #include <stdlib.h>

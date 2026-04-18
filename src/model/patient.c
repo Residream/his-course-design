@@ -704,7 +704,8 @@ void update_patient()
         switch (select)
         {
         /* 更新姓名 */
-        case 1: {
+        case 1:
+        {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -738,7 +739,8 @@ void update_patient()
             break;
         }
         /* 更新性别 */
-        case 2: {
+        case 2:
+        {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -768,7 +770,8 @@ void update_patient()
             break;
         }
         /* 更新年龄 */
-        case 3: {
+        case 3:
+        {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -833,7 +836,8 @@ void update_patient()
             break;
         }
         /* 更新密码 */
-        case 4: {
+        case 4:
+        {
             while (1)
             {
                 char new_password[MAX_INPUT_LEN];
@@ -1149,7 +1153,8 @@ void patient_update_my_info()
         switch (select)
         {
         /* 更新姓名 */
-        case 1: {
+        case 1:
+        {
             char name[MAX_NAME_LEN];
             while (1)
             {
@@ -1183,7 +1188,8 @@ void patient_update_my_info()
             break;
         }
         /* 更新性别 */
-        case 2: {
+        case 2:
+        {
             char gender[MAX_GENDER_LEN];
             while (1)
             {
@@ -1213,7 +1219,8 @@ void patient_update_my_info()
             break;
         }
         /* 更新年龄 */
-        case 3: {
+        case 3:
+        {
             while (1)
             {
                 char age_buf[MAX_INPUT_LEN];
@@ -1278,7 +1285,8 @@ void patient_update_my_info()
             break;
         }
         /* 更新密码 */
-        case 4: {
+        case 4:
+        {
             while (1)
             {
                 char old_password[MAX_INPUT_LEN];
@@ -1480,7 +1488,7 @@ void patient_registration()
                 return;
             }
 
-            *new_node = create_registration(id, g_session.user_id, doctor_id, time(NULL), 0);
+            *new_node = create_registration(id, g_session.user_id, doctor_id, time(NULL), REG_STATUS_PENDING);
             append_registration(&reg_head, new_node);
 
             if (save_registrations_to_file(reg_head) != 0)

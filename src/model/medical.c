@@ -2125,7 +2125,7 @@ void delete_registration(void)
                     Bed *b = find_bed_by_b_id(bed_head, h->bed_id);
                     Ward *w = find_ward_by_w_id(ward_head, h->ward_id);
                     if (b)
-                        b->status = 0;
+                        b->status = BED_STATUS_FREE;
                     if (w && w->occupied > 0)
                         w->occupied -= 1;
                 }
@@ -2343,7 +2343,7 @@ void delete_visit(void)
                     Bed *b = find_bed_by_b_id(bed_head, h->bed_id);
                     Ward *w = find_ward_by_w_id(ward_head, h->ward_id);
                     if (b)
-                        b->status = 0;
+                        b->status = BED_STATUS_FREE;
                     if (w && w->occupied > 0)
                         w->occupied -= 1;
                 }
@@ -2574,7 +2574,7 @@ void delete_hospitalization(void)
         Bed *b = find_bed_by_b_id(bed_head, target->bed_id);
         Ward *w = find_ward_by_w_id(ward_head, target->ward_id);
         if (b)
-            b->status = 0;
+            b->status = BED_STATUS_FREE;
         if (w && w->occupied > 0)
             w->occupied -= 1;
     }

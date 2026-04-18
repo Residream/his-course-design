@@ -204,7 +204,7 @@ Hospitalization *find_hospitalization_by_p_id(Hospitalization *head, const char 
 Hospitalization *find_ongoing_hospitalization_by_p_id(Hospitalization *head, const char *p_id)
 {
     for (Hospitalization *cur = head; cur; cur = cur->next)
-        if (strcmp(cur->p_id, p_id) == 0 && cur->status == 0)
+        if (strcmp(cur->p_id, p_id) == 0 && cur->status == HOSP_STATUS_ONGOING)
             return cur;
     return NULL;
 }
@@ -278,7 +278,7 @@ void print_hospitalization(Hospitalization *h, Visit *v_head, Registration *r_he
     printf(" | ");
     print_align(out_buf, out_w);
     printf(" | ");
-    print_align(h->status == 0 ? "住院中" : "已出院", st_w);
+    print_align(h->status == HOSP_STATUS_ONGOING ? "住院中" : "已出院", st_w);
     printf(" |\n");
 }
 
@@ -394,7 +394,7 @@ void calc_hospitalization_width(Hospitalization *h_head, Visit *v_head, Registra
         width = str_width(out_buf);
         if (width > *out_w)
             *out_w = width;
-        width = str_width(h->status == 0 ? "住院中" : "已出院");
+        width = str_width(h->status == HOSP_STATUS_ONGOING ? "住院中" : "已出院");
         if (width > *st_w)
             *st_w = width;
     }
@@ -560,11 +560,12 @@ int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const cha
     if (!node)
         return 0;
 
-    *node = create_hospitalization(hosp_id, visit_id, p_id, bed->ward_id, bed->bed_id, time(NULL), 0, 0);
+    *node = create_hospitalization(hosp_id, visit_id, p_id, bed->ward_id, bed->bed_id, time(NULL), 0,
+                                   HOSP_STATUS_ONGOING);
     append_hospitalization(h_head, node);
 
     /* 同步更新床位状态和病房占用数（内存级，尚未持久化） */
-    bed->status = 1;
+    bed->status = BED_STATUS_OCCUPIED;
     ward->occupied += 1;
 
     return 1;
@@ -578,7 +579,7 @@ int admit_patient(Hospitalization **h_head, Ward *w_head, Bed *b_head, const cha
 int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const char *hosp_id)
 {
     Hospitalization *h = find_hospitalization_by_h_id(h_head, hosp_id);
-    if (!h || h->status != 0)
+    if (!h || h->status != HOSP_STATUS_ONGOING)
         return 0;
 
     Bed *b = find_bed_by_b_id(b_head, h->bed_id);
@@ -586,12 +587,12 @@ int discharge_patient(Hospitalization *h_head, Ward *w_head, Bed *b_head, const 
 
     /* 释放关联的床位和病房占用计数 */
     if (b)
-        b->status = 0;
+        b->status = BED_STATUS_FREE;
     if (w && w->occupied > 0)
         w->occupied -= 1;
 
     /* 标记出院状态和时间 */
-    h->status = 1;
+    h->status = HOSP_STATUS_DISCHARGED;
     h->discharge_date = time(NULL);
     return 1;
 }
@@ -929,7 +930,7 @@ void doctor_discharge_patient_hospitalization(const char *v_id)
                     printf("该看诊没有住院记录！\n");
                     ok = 0;
                 }
-                else if (h->status != 0)
+                else if (h->status != HOSP_STATUS_ONGOING)
                 {
                     printf("该住院记录已出院，无需重复办理！\n");
                     ok = 0;

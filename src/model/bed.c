@@ -79,7 +79,7 @@ Bed *load_beds_from_file(void)
         endptr = NULL;
         long status_val = strtol(token, &endptr, 10); // 使用strtol把字符串转换成十进制，endptr会指向未解析部分
         if (token[0] == '\0' || *endptr != '\0' ||
-            (status_val != 0 && status_val != 1)) // 字符串为空、没有完整解析、非0非1都视为无效
+            (status_val != BED_STATUS_FREE && status_val != BED_STATUS_OCCUPIED)) // 字符串为空、没有完整解析、状态值无效
         {
             free(node);
             continue;
@@ -138,7 +138,7 @@ Bed *find_bed_by_b_id(Bed *head, const char *bed_id)
 Bed *find_first_free_bed(Bed *head)
 {
     for (Bed *cur = head; cur; cur = cur->next)
-        if (cur->status == 0)
+        if (cur->status == BED_STATUS_FREE)
             return cur;
     return NULL;
 }
@@ -147,7 +147,7 @@ Bed *find_first_free_bed(Bed *head)
 Bed *find_first_free_bed_in_ward(Bed *head, const char *ward_id)
 {
     for (Bed *cur = head; cur; cur = cur->next)
-        if (cur->status == 0 && strcmp(cur->ward_id, ward_id) == 0)
+        if (cur->status == BED_STATUS_FREE && strcmp(cur->ward_id, ward_id) == 0)
             return cur;
     return NULL;
 }
@@ -198,7 +198,7 @@ int count_free_beds(Bed *head)
 {
     int c = 0;
     for (Bed *cur = head; cur; cur = cur->next)
-        if (cur->status == 0) // 空闲
+        if (cur->status == BED_STATUS_FREE) // 空闲
             c++;
     return c;
 }
@@ -219,14 +219,14 @@ void print_bed(Bed *b, Ward *w_head, int id_w, int ward_w, int no_w, int st_w)
     printf(" | ");
     print_align(no, no_w);
     printf(" | ");
-    print_align(b->status == 0 ? "空闲" : "已占用", st_w);
+    print_align(b->status == BED_STATUS_FREE ? "空闲" : "已占用", st_w);
     printf(" |\n");
 }
 
 /* 打印空闲床位信息行 */
 void print_free_bed(Bed *b, Ward *w_head, int id_w, int ward_w, int no_w, int st_w)
 {
-    if (b->status != 0)
+    if (b->status != BED_STATUS_FREE)
         return;
     print_bed(b, w_head, id_w, ward_w, no_w, st_w);
 }
@@ -292,7 +292,7 @@ void calc_bed_width(Bed *b_head, Ward *w_head, int *id_w, int *ward_w, int *no_w
         width = str_width(no);
         if (width > *no_w)
             *no_w = width;
-        width = str_width(b->status == 0 ? "空闲" : "已占用");
+        width = str_width(b->status == BED_STATUS_FREE ? "空闲" : "已占用");
         if (width > *st_w)
             *st_w = width;
     }
@@ -459,7 +459,7 @@ void add_bed()
                 break;
             }
 
-            *new_node = create_bed(bed_id, ward_id, bed_no, 0);
+            *new_node = create_bed(bed_id, ward_id, bed_no, BED_STATUS_FREE);
             append_bed(&b_head, new_node);
             success_count++;
         }
@@ -587,7 +587,7 @@ void delete_bed()
             int free_count = 0;
             for (Bed *b = b_head; b; b = b->next)
             {
-                if (strcmp(b->ward_id, ward_id) == 0 && b->status == 0)
+                if (strcmp(b->ward_id, ward_id) == 0 && b->status == BED_STATUS_FREE)
                     free_count++;
             }
 
@@ -606,7 +606,7 @@ void delete_bed()
             print_bed_header(bed_id_w, ward_name_w, no_w, st_w);
             for (Bed *b = b_head; b; b = b->next)
             {
-                if (strcmp(b->ward_id, ward_id) == 0 && b->status == 0)
+                if (strcmp(b->ward_id, ward_id) == 0 && b->status == BED_STATUS_FREE)
                     print_bed(b, w_head, bed_id_w, ward_name_w, no_w, st_w);
             }
             print_bed_line(bed_id_w, ward_name_w, no_w, st_w);
@@ -634,7 +634,7 @@ void delete_bed()
             }
 
             Bed *bed = find_bed_by_b_id(b_head, bed_id);
-            if (!bed || strcmp(bed->ward_id, ward_id) != 0 || bed->status != 0)
+            if (!bed || strcmp(bed->ward_id, ward_id) != 0 || bed->status != BED_STATUS_FREE)
             {
                 printf("输入错误：床位ID不存在，或不属于该病房，或已被占用！\n");
                 wait_enter();
