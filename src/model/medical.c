@@ -1,7 +1,6 @@
 /*
-
  * 医疗记录模块
-   */
+ */
 #include "model/medical.h"
 #include "core/session.h"
 #include "core/utils.h"
@@ -17,14 +16,13 @@
 #include "model/ward.h"
 
 /*
-
  * 医疗记录系统功能
-   */
+ */
 
 /*
-
  * 全程查询
-   */
+ */
+
 /* 患者就诊全程查阅 */
 void query_patients_medical_records(void)
 {

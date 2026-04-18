@@ -1,5 +1,5 @@
 /*
- *检查模块
+ * 检查模块
  */
 #ifndef EXAM_H
 #define EXAM_H

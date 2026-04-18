@@ -1,5 +1,5 @@
 /*
- * 患者功能模块
+ * 处方功能模块
  */
 #ifndef PRESCRIPTION_H
 #define PRESCRIPTION_H

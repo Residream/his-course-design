@@ -1,5 +1,5 @@
 /*
- *检查模块
+ * 检查模块
  */
 #include "model/exam.h"
 #include "core/utils.h"
