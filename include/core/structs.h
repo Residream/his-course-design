@@ -164,6 +164,7 @@ typedef struct Prescription
     char drug_id[MAX_ID_LEN];
     char dose[MAX_DOSE_LEN];      // 剂量
     char frequency[MAX_FREQ_LEN]; // 频次
+    int dispensed;                // 0=未发药，1=已发药
 
     struct Prescription *next;
 } Prescription;

@@ -14,7 +14,8 @@
  * 处方基础操作
  */
 
-/* 从文件中加载处方数据，文件格式: pr_id|visit_id|p_id|d_id|drug_id|dose|frequency */
+/* 从文件中加载处方数据，文件格式: pr_id|visit_id|d_id|p_id|drug_id|dose|frequency|dispensed
+ * 向后兼容: 若缺少 dispensed 字段，默认视为 0（未发药） */
 Prescription *load_prescriptions_from_file(void)
 {
     FILE *fp = fopen(PRESCRIPTIONS_FILE, "r");
@@ -102,6 +103,13 @@ Prescription *load_prescriptions_from_file(void)
         }
         strncpy(node->frequency, token, sizeof(node->frequency) - 1);
 
+        /* 获取 dispensed（可选字段，不存在时默认为 0） */
+        token = strtok(NULL, "|");
+        if (token)
+            node->dispensed = atoi(token);
+        else
+            node->dispensed = PR_STATUS_UNDISPENSED;
+
         node->next = NULL;
         if (!head)
             head = tail = node;
@@ -124,8 +132,8 @@ int save_prescriptions_to_file(Prescription *head)
         return -1;
 
     for (Prescription *cur = head; cur; cur = cur->next)
-        fprintf(fp, "%s|%s|%s|%s|%s|%s|%s\n", cur->pr_id, cur->visit_id, cur->d_id, cur->p_id, cur->drug_id, cur->dose,
-                cur->frequency);
+        fprintf(fp, "%s|%s|%s|%s|%s|%s|%s|%d\n", cur->pr_id, cur->visit_id, cur->d_id, cur->p_id, cur->drug_id,
+                cur->dose, cur->frequency, cur->dispensed);
 
     return safe_fclose_commit(fp, tmp_path, PRESCRIPTIONS_FILE);
 }

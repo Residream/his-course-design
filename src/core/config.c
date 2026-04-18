@@ -23,3 +23,8 @@ const char *HOSP_STATUS_TEXT[HOSP_STATUS_COUNT] = {
     "住院中",
     "已出院",
 };
+
+const char *PR_STATUS_TEXT[PR_STATUS_COUNT] = {
+    "未发药",
+    "已发药",
+};

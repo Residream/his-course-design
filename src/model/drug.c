@@ -2023,7 +2023,7 @@ cleanup:
 }
 
 /*
- * 处方发药
+ * 处方发药(医生/管理员均可调用)
  * 业务流程: 选择处方 -> 选择药房 -> 校验库存 -> 扣减药房库存和药品总库存
  * 涉及两张表联动: pharmacy_drugs + drugs
  * 保存失败时回滚扣减操作
@@ -2068,42 +2068,80 @@ void dispense_prescription_drug()
 
     clear_screen();
     printf("===== 处方发药业务 (当前医生: %s, 所属科室: %s) =====\n", me->name, my_dept);
-    printf("\n以下是您开具的处方列表：\n");
+    printf("\n以下是您开具的未发药处方列表：\n");
 
-    /* 2. 筛选并打印当前医生名下的处方 */
+    /* 2. 筛选并打印当前医生名下的未发药处方（分页显示） */
     int pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w;
     calc_prescription_width(pr_head, patient_head, doc_head, d_head, &pr_w, &visit_w, &d_w, &p_w, &drug_w, &dose_w,
                             &freq_w);
 
-    /* 先统计 */
+    /* 先统计当前医生的未发药处方数量 */
     int pr_count = 0;
     for (Prescription *c = pr_head; c; c = c->next)
     {
-        if (strcmp(c->d_id, g_session.user_id) == 0)
+        if (strcmp(c->d_id, g_session.user_id) == 0 && c->dispensed == PR_STATUS_UNDISPENSED)
             pr_count++;
     }
 
     if (pr_count == 0)
     {
-        printf("  提示：您当前名下没有任何处方记录。\n");
+        printf("  提示：您当前名下没有任何待发药的处方记录。\n");
         wait_enter();
         goto cleanup;
     }
 
-    print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-    for (Prescription *c = pr_head; c; c = c->next)
-    {
-        if (strcmp(c->d_id, g_session.user_id) == 0)
-            print_prescription(c, patient_head, doc_head, d_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
-    }
-    print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+    /* 分页浏览 */
+    int page_size = PAGE_SIZE;
+    int total_pages = (pr_count + page_size - 1) / page_size;
+    int current_page = 1;
+    char pr_id[MAX_ID_LEN] = {0};
 
-    /* 3. 输入待履行的处方ID */
-    char pr_id[MAX_ID_LEN];
-    printf("\n请输入需履行的处方ID(输入0返回): ");
-    safe_input(pr_id, sizeof(pr_id));
-    if (strcmp(pr_id, "0") == 0 || pr_id[0] == '\0')
-        goto cleanup;
+    while (1)
+    {
+        clear_screen();
+        printf("===== 处方发药业务 (当前医生: %s, 所属科室: %s) =====\n", me->name, my_dept);
+        printf("\n您名下未发药处方 (共 %d 条, 第 %d/%d 页):\n", pr_count, current_page, total_pages);
+
+        print_prescription_header(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+
+        int skip = (current_page - 1) * page_size;
+        int printed = 0;
+        int idx = 0;
+        for (Prescription *c = pr_head; c; c = c->next)
+        {
+            if (strcmp(c->d_id, g_session.user_id) != 0 || c->dispensed != PR_STATUS_UNDISPENSED)
+                continue;
+            if (idx++ < skip)
+                continue;
+            print_prescription(c, patient_head, doc_head, d_head, pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+            if (++printed >= page_size)
+                break;
+        }
+        print_prescription_line(pr_w, visit_w, d_w, p_w, drug_w, dose_w, freq_w);
+
+        printf("\n[n]下一页  [p]上一页  [输入处方ID]开始发药  [0]返回\n> ");
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "0") == 0 || buf[0] == '\0')
+            goto cleanup;
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (current_page < total_pages)
+                current_page++;
+            continue;
+        }
+        if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (current_page > 1)
+                current_page--;
+            continue;
+        }
+        /* 否则按处方 ID 开始发药 */
+        strncpy(pr_id, buf, sizeof(pr_id) - 1);
+        pr_id[sizeof(pr_id) - 1] = '\0';
+        break;
+    }
 
     /* 寻找处方 */
     Prescription *pr = NULL;
@@ -2220,31 +2258,36 @@ void dispense_prescription_drug()
         goto cleanup;
     }
 
-    /* 第一步: 快照扣减前的库存 */
+    /* 第一步: 快照扣减前的库存 + 处方发药状态 */
     int old_pd_qty = target_pd->quantity;
     int old_stock = target_drug->stock;
+    int old_dispensed = pr->dispensed;
 
-    /* 第二步: 扣减药房库存和药品总库存 */
+    /* 第二步: 扣减药房库存和药品总库存，并标记处方已发药 */
     target_pd->quantity -= qty;
     target_drug->stock -= qty;
+    pr->dispensed = PR_STATUS_DISPENSED;
 
-    /* 第三步: 顺序保存两张表 */
+    /* 第三步: 顺序保存三张表 */
     int pd_save_rc = save_pharmacy_drugs_to_file(pd_head);
     int d_save_rc = save_drugs_to_file(d_head);
+    int pr_save_rc = save_prescriptions_to_file(pr_head);
 
-    if (pd_save_rc == 0 && d_save_rc == 0)
-        printf("\n处方发药成功！已从指定药房扣减库存。\n");
+    if (pd_save_rc == 0 && d_save_rc == 0 && pr_save_rc == 0)
+        printf("\n处方发药成功！已从指定药房扣减库存，处方标记为已发药。\n");
     else
     {
-        /* 第四步(失败回滚): 从快照恢复库存并重新写入文件 */
+        /* 第四步(失败回滚): 从快照恢复库存与发药状态并重新写入文件 */
         target_pd->quantity = old_pd_qty;
         target_drug->stock = old_stock;
+        pr->dispensed = old_dispensed;
 
         int rb_pd = save_pharmacy_drugs_to_file(pd_head);
         int rb_d = save_drugs_to_file(d_head);
+        int rb_pr = save_prescriptions_to_file(pr_head);
 
         printf("发药失败：保存文件失败。");
-        if (rb_pd == 0 && rb_d == 0)
+        if (rb_pd == 0 && rb_d == 0 && rb_pr == 0)
             printf("已回滚。\n");
         else
             printf("且回滚失败，请立即检查数据文件。\n");
@@ -2303,43 +2346,79 @@ void show_pharmacy_drugs()
     int id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w;
     calc_drug_width(d_head, &id_w, &gn_w, &tn_w, &al_w, &pr_w, &st_w, &dept_w);
 
-    clear_screen();
-    printf("===== [%s - %s] 库存明细列表 =====\n", target_p->id, target_p->name);
-
-    /* 先统计 */
-    int found = 0;
+    /* 先统计匹配数量 */
+    int total = 0;
     for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
     {
         if (strcmp(pd->pharmacy_id, p_id) == 0 && pd->quantity > 0)
-        {
-            found = 1;
-            break;
-        }
+            total++;
     }
 
-    if (!found)
+    if (total == 0)
     {
+        clear_screen();
+        printf("===== [%s - %s] 库存明细列表 =====\n", target_p->id, target_p->name);
         printf("该药房内暂无任何有库存的药品！\n");
+        wait_enter();
+        goto cleanup;
     }
-    else
+
+    /* 分页浏览 */
+    int page_size = PAGE_SIZE;
+    int total_pages = (total + page_size - 1) / page_size;
+    int current_page = 1;
+
+    while (1)
     {
+        clear_screen();
+        printf("===== [%s - %s] 库存明细列表 (共 %d 条, 第 %d/%d 页) =====\n",
+               target_p->id, target_p->name, total, current_page, total_pages);
+
         print_drug_header(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+
+        int skip = (current_page - 1) * page_size;
+        int printed = 0;
+        int idx = 0;
         for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
         {
-            if (strcmp(pd->pharmacy_id, p_id) == 0 && pd->quantity > 0)
+            if (strcmp(pd->pharmacy_id, p_id) != 0 || pd->quantity <= 0)
+                continue;
+            if (idx++ < skip)
+                continue;
+            Drug *drug = find_drug_by_id(d_head, pd->drug_id);
+            if (drug)
             {
-                Drug *drug = find_drug_by_id(d_head, pd->drug_id);
-                if (drug)
-                {
-                    Drug temp = *drug;
-                    temp.stock = pd->quantity;
-                    print_drug(&temp, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
-                }
+                Drug temp = *drug;
+                temp.stock = pd->quantity;
+                print_drug(&temp, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
             }
+            if (++printed >= page_size)
+                break;
         }
         print_drug_line(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+
+        printf("\n[n]下一页  [p]上一页  [q]退出\n> ");
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
+            break;
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (current_page < total_pages)
+                current_page++;
+        }
+        else if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (current_page > 1)
+                current_page--;
+        }
+        else
+        {
+            printf("输入无效，请重新输入！\n");
+            wait_enter();
+        }
     }
-    wait_enter();
 
 cleanup:
     free_pharmacies(p_head);
