@@ -1868,7 +1868,7 @@ void delete_drug_from_pharmacy()
         return;
     }
 
-    char p_id[MAX_ID_LEN], d_id[MAX_ID_LEN];
+    char p_id[MAX_ID_LEN];
 
     print_pharmacy_hint();
     printf("请输入目标药房ID(输入0返回): ");
@@ -1890,33 +1890,82 @@ void delete_drug_from_pharmacy()
         goto cleanup;
     }
 
-    int has_record = 0;
-    printf("药房 [%s] 当前药品记录:\n", target_p->name);
+    /* 统计该药房的药品记录总数 */
+    int total = 0;
     for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
     {
         if (strcmp(pd->pharmacy_id, p_id) == 0)
-        {
-            Drug *drug = find_drug_by_id(d_head, pd->drug_id);
-            printf(" - %-10s %-16s 库存: %d\n", pd->drug_id, drug ? drug->generic_name : "未知药品", pd->quantity);
-            has_record = 1;
-        }
+            total++;
     }
-    if (!has_record)
+    if (total == 0)
     {
         printf("该药房暂无药品记录！\n");
         wait_enter();
         goto cleanup;
     }
 
-    printf("请输入要删除的药品ID(输入0返回): ");
-    safe_input(d_id, sizeof(d_id));
-    if (strcmp(d_id, "0") == 0)
-        goto cleanup;
-    if (d_id[0] == '\0')
+    /* 预计算表格列宽（沿用药品表的列宽逻辑，库存列以药房库存为准） */
+    int id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w;
+    calc_drug_width(d_head, &id_w, &gn_w, &tn_w, &al_w, &pr_w, &st_w, &dept_w);
+
+    /* 分页浏览 + 直接输入药品ID 选择删除 */
+    int page_size = PAGE_SIZE;
+    int total_pages = (total + page_size - 1) / page_size;
+    int current_page = 1;
+    char d_id[MAX_ID_LEN] = {0};
+
+    while (1)
     {
-        printf("药品ID不能为空！\n");
-        wait_enter();
-        goto cleanup;
+        clear_screen();
+        printf("===== 从药房删除药品 [%s - %s] (共 %d 条, 第 %d/%d 页) =====\n",
+               target_p->id, target_p->name, total, current_page, total_pages);
+
+        print_drug_header(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+
+        int skip = (current_page - 1) * page_size;
+        int printed = 0;
+        int idx = 0;
+        for (PharmacyDrug *pd = pd_head; pd; pd = pd->next)
+        {
+            if (strcmp(pd->pharmacy_id, p_id) != 0)
+                continue;
+            if (idx++ < skip)
+                continue;
+            Drug *drug = find_drug_by_id(d_head, pd->drug_id);
+            if (drug)
+            {
+                /* 拷贝一份把库存字段替换为药房库存再打印，保持表格一致 */
+                Drug temp = *drug;
+                temp.stock = pd->quantity;
+                print_drug(&temp, id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+            }
+            if (++printed >= page_size)
+                break;
+        }
+        print_drug_line(id_w, gn_w, tn_w, al_w, pr_w, st_w, dept_w);
+
+        printf("\n[n]下一页  [p]上一页  [输入药品ID]删除对应记录  [0]返回\n> ");
+        char buf[MAX_INPUT_LEN];
+        safe_input(buf, sizeof(buf));
+
+        if (strcmp(buf, "0") == 0 || buf[0] == '\0')
+            goto cleanup;
+        if (strcmp(buf, "n") == 0 || strcmp(buf, "N") == 0)
+        {
+            if (current_page < total_pages)
+                current_page++;
+            continue;
+        }
+        if (strcmp(buf, "p") == 0 || strcmp(buf, "P") == 0)
+        {
+            if (current_page > 1)
+                current_page--;
+            continue;
+        }
+        /* 按药品ID 选择删除 */
+        strncpy(d_id, buf, sizeof(d_id) - 1);
+        d_id[sizeof(d_id) - 1] = '\0';
+        break;
     }
 
     PharmacyDrug *target_pd = NULL;
