@@ -21,16 +21,16 @@ Exam *find_exam_by_d_id(Exam *exam_head, Visit *visit_head, Registration *reg_he
                         const char *d_id); // 根据医生ID查找检查
 int generate_next_exam_id(Exam *head);     // 生成下一个检查ID
 void print_exam(Exam *e, Visit *v_head, Registration *r_head, Patient *p_head, Doctor *d_head, int exam_w, int visit_w,
-                int p_w, int d_w, int dept_w, int item_w, int result_w); // 打印检查信息行
+                int p_w, int d_w, int dept_w, int item_w, int result_w);                                 // 打印检查信息行
 void print_exam_header(int exam_w, int visit_w, int p_w, int d_w, int dept_w, int item_w, int result_w); // 打印检查表头
-void print_exam_line(int exam_w, int visit_w, int p_w, int d_w, int dept_w, int item_w, int result_w); // 打印检查分隔线
+void print_exam_line(int exam_w, int visit_w, int p_w, int d_w, int dept_w, int item_w, int result_w);   // 打印检查分隔线
 void calc_exam_width(Exam *e_head, Visit *v_head, Registration *r_head, Patient *p_head, Doctor *d_head, int *exam_w,
                      int *visit_w, int *p_w, int *d_w, int *dept_w, int *item_w, int *result_w); // 计算检查表格列宽
 int count_exams(Exam *head);                                                                     // 统计检查数量
 Exam *get_nth_exam(Exam *head, int n);                                                           // 获取第n个检查节点
-int count_exams_for_doctor(Exam *e_head, Registration *reg_head,
+int count_exams_for_doctor(Exam *e_head, Visit *v_head, Registration *reg_head,
                            const char *d_id); // 统计医生名下的检查数量
-Exam *get_nth_exam_for_doctor(Exam *e_head, Registration *reg_head, const char *d_id,
+Exam *get_nth_exam_for_doctor(Exam *e_head, Visit *v_head, Registration *reg_head, const char *d_id,
                               int n); // 获取医生名下的第n个检查节点
 
 /*

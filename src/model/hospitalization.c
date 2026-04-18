@@ -423,12 +423,16 @@ Hospitalization *get_nth_hospitalization(Hospitalization *head, int n)
 }
 
 /* 统计医生名下的住院数量 */
-int count_hospitalizations_for_doctor(Hospitalization *h_head, Registration *reg_head, const char *d_id)
+int count_hospitalizations_for_doctor(Hospitalization *h_head, Visit *v_head, Registration *reg_head, const char *d_id)
 {
     int count = 0;
     for (Hospitalization *h = h_head; h; h = h->next)
     {
-        const char *h_d_id = get_doctor_id_by_reg_id(reg_head, h->visit_id);
+        Visit *v = find_visit_by_v_id(v_head, h->visit_id);
+        if (!v)
+            continue;
+
+        const char *h_d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
         if (h_d_id && strcmp(h_d_id, d_id) == 0)
         {
             count++;
@@ -438,12 +442,16 @@ int count_hospitalizations_for_doctor(Hospitalization *h_head, Registration *reg
 }
 
 /* 获取医生名下的第n个住院节点 */
-Hospitalization *get_nth_hospitalization_for_doctor(Hospitalization *h_head, Registration *reg_head, const char *d_id,
-                                                    int n)
+Hospitalization *get_nth_hospitalization_for_doctor(Hospitalization *h_head, Visit *v_head, Registration *reg_head,
+                                                    const char *d_id, int n)
 {
     for (Hospitalization *h = h_head; h; h = h->next)
     {
-        const char *h_d_id = get_doctor_id_by_reg_id(reg_head, h->visit_id);
+        Visit *v = find_visit_by_v_id(v_head, h->visit_id);
+        if (!v)
+            continue;
+
+        const char *h_d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
         if (h_d_id && strcmp(h_d_id, d_id) == 0)
         {
             if (n == 0)

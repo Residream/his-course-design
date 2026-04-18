@@ -166,7 +166,8 @@ void query_patients_medical_records(void)
 
             switch (cur_sec)
             {
-            case 0: {
+            case 0:
+            {
                 print_registration_header(reg_w, rp_w, rd_w, rdept_w, rwhen_w, rst_w);
                 Registration *r = find_registration_by_p_id(reg_head, p_id);
                 for (int i = 0; i < start && r; i++)
@@ -179,7 +180,8 @@ void query_patients_medical_records(void)
                 print_registration_line(reg_w, rp_w, rd_w, rdept_w, rwhen_w, rst_w);
                 break;
             }
-            case 1: {
+            case 1:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无看诊记录！\n");
@@ -197,7 +199,8 @@ void query_patients_medical_records(void)
                 print_visit_line(vis_w, vp_w, vd_w, vdept_w, vwhen_w, vst_w, vdiag_w);
                 break;
             }
-            case 2: {
+            case 2:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无检查记录！\n");
@@ -216,7 +219,8 @@ void query_patients_medical_records(void)
                 print_exam_line(exam_w, ev_w, ep_w, ed_w, edept_w, item_w, result_w);
                 break;
             }
-            case 3: {
+            case 3:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无住院记录！\n");
@@ -235,7 +239,8 @@ void query_patients_medical_records(void)
                 print_hospitalization_line(hosp_w, hv_w, hp_w, ward_w, bed_w, in_w, out_w, hst_w);
                 break;
             }
-            case 4: {
+            case 4:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无处方记录！\n");
@@ -377,8 +382,8 @@ void print_medical_records_by_category(void)
     {
         sec_totals[0] = count_registrations_for_doctor(reg_head, g_session.user_id);
         sec_totals[1] = count_visits_for_doctor(v_head, reg_head, g_session.user_id);
-        sec_totals[2] = count_exams_for_doctor(e_head, reg_head, g_session.user_id);
-        sec_totals[3] = count_hospitalizations_for_doctor(h_head, reg_head, g_session.user_id);
+        sec_totals[2] = count_exams_for_doctor(e_head, v_head, reg_head, g_session.user_id);
+        sec_totals[3] = count_hospitalizations_for_doctor(h_head, v_head, reg_head, g_session.user_id);
         sec_totals[4] = count_prescriptions_for_doctor(pr_head, g_session.user_id);
     }
 
@@ -405,7 +410,8 @@ void print_medical_records_by_category(void)
 
             switch (cur_sec)
             {
-            case 0: {
+            case 0:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无挂号记录！\n");
@@ -423,7 +429,8 @@ void print_medical_records_by_category(void)
                 print_registration_line(reg_w, rp_w, rd_w, rdept_w, rwhen_w, rst_w);
                 break;
             }
-            case 1: {
+            case 1:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无看诊记录！\n");
@@ -441,26 +448,29 @@ void print_medical_records_by_category(void)
                 print_visit_line(vis_w, vp_w, vd_w, vdept_w, vwhen_w, vst_w, vdiag_w);
                 break;
             }
-            case 2: {
+            case 2:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无检查记录！\n");
                     break;
                 }
                 print_exam_header(exam_w, ev_w, ep_w, ed_w, edept_w, item_w, result_w);
-                Exam *e = is_doctor ? get_nth_exam_for_doctor(e_head, reg_head, g_session.user_id, start)
+                Exam *e = is_doctor ? get_nth_exam_for_doctor(e_head, v_head, reg_head, g_session.user_id, start)
                                     : get_nth_exam(e_head, start);
                 for (int i = 0; i < PAGE_SIZE && e; i++)
                 {
                     print_exam(e, v_head, reg_head, p_head, d_head, exam_w, ev_w, ep_w, ed_w, edept_w, item_w,
                                result_w);
-                    e = is_doctor ? get_nth_exam_for_doctor(e_head, reg_head, g_session.user_id, start + i + 1)
-                                  : get_nth_exam(e_head, start + i + 1);
+                    e = is_doctor
+                            ? get_nth_exam_for_doctor(e_head, v_head, reg_head, g_session.user_id, start + i + 1)
+                            : get_nth_exam(e_head, start + i + 1);
                 }
                 print_exam_line(exam_w, ev_w, ep_w, ed_w, edept_w, item_w, result_w);
                 break;
             }
-            case 3: {
+            case 3:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无住院记录！\n");
@@ -468,20 +478,21 @@ void print_medical_records_by_category(void)
                 }
                 print_hospitalization_header(hosp_w, hv_w, hp_w, ward_w, bed_w, in_w, out_w, hst_w);
                 Hospitalization *h =
-                    is_doctor ? get_nth_hospitalization_for_doctor(h_head, reg_head, g_session.user_id, start)
+                    is_doctor ? get_nth_hospitalization_for_doctor(h_head, v_head, reg_head, g_session.user_id, start)
                               : get_nth_hospitalization(h_head, start);
                 for (int i = 0; i < PAGE_SIZE && h; i++)
                 {
                     print_hospitalization(h, v_head, reg_head, p_head, ward_head, bed_head, hosp_w, hv_w, hp_w, ward_w,
                                           bed_w, in_w, out_w, hst_w);
-                    h = is_doctor
-                            ? get_nth_hospitalization_for_doctor(h_head, reg_head, g_session.user_id, start + i + 1)
-                            : get_nth_hospitalization(h_head, start + i + 1);
+                    h = is_doctor ? get_nth_hospitalization_for_doctor(h_head, v_head, reg_head, g_session.user_id,
+                                                                       start + i + 1)
+                                  : get_nth_hospitalization(h_head, start + i + 1);
                 }
                 print_hospitalization_line(hosp_w, hv_w, hp_w, ward_w, bed_w, in_w, out_w, hst_w);
                 break;
             }
-            case 4: {
+            case 4:
+            {
                 if (total == 0)
                 {
                     printf("\n暂无处方记录！\n");
@@ -619,7 +630,8 @@ void query_registrations(void)
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char key[MAX_ID_LEN];
             printf("请输入挂号ID(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -645,7 +657,8 @@ void query_registrations(void)
             }
             break;
         }
-        case 2: {
+        case 2:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入患者姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -678,7 +691,8 @@ void query_registrations(void)
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入医生姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -712,7 +726,8 @@ void query_registrations(void)
             }
             break;
         }
-        case 4: {
+        case 4:
+        {
             char sbuf[MAX_INPUT_LEN];
             int sselect;
 
@@ -872,7 +887,8 @@ void query_visits(void)
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char key[MAX_ID_LEN];
             printf("请输入看诊ID(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -903,7 +919,8 @@ void query_visits(void)
             }
             break;
         }
-        case 2: {
+        case 2:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入患者姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -939,7 +956,8 @@ void query_visits(void)
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入医生姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -976,7 +994,8 @@ void query_visits(void)
             }
             break;
         }
-        case 4: {
+        case 4:
+        {
             char sbuf[MAX_INPUT_LEN];
             int sselect;
 
@@ -1142,7 +1161,8 @@ void query_exams(void)
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char key[MAX_ID_LEN];
             printf("请输入检查ID(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1174,7 +1194,8 @@ void query_exams(void)
             }
             break;
         }
-        case 2: {
+        case 2:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入患者姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1213,7 +1234,8 @@ void query_exams(void)
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入医生姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1253,7 +1275,8 @@ void query_exams(void)
             }
             break;
         }
-        case 4: {
+        case 4:
+        {
             /* 检查记录无 status, 第 4 项改为按检查项目模糊 */
             char key[MAX_INPUT_LEN];
             printf("请输入检查项目关键字(输入0返回): ");
@@ -1416,7 +1439,8 @@ void query_hospitalizations(void)
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char key[MAX_ID_LEN];
             printf("请输入住院ID(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1448,7 +1472,8 @@ void query_hospitalizations(void)
             }
             break;
         }
-        case 2: {
+        case 2:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入患者姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1484,7 +1509,8 @@ void query_hospitalizations(void)
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入医生姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1524,7 +1550,8 @@ void query_hospitalizations(void)
             }
             break;
         }
-        case 4: {
+        case 4:
+        {
             char sbuf[MAX_INPUT_LEN];
             int sselect;
 
@@ -1690,7 +1717,8 @@ void query_prescriptions(void)
 
         switch (select)
         {
-        case 1: {
+        case 1:
+        {
             char key[MAX_ID_LEN];
             printf("请输入处方ID(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1717,7 +1745,8 @@ void query_prescriptions(void)
             }
             break;
         }
-        case 2: {
+        case 2:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入患者姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1750,7 +1779,8 @@ void query_prescriptions(void)
             }
             break;
         }
-        case 3: {
+        case 3:
+        {
             char key[MAX_NAME_LEN];
             printf("请输入医生姓名(输入0返回): ");
             safe_input(key, sizeof(key));
@@ -1784,7 +1814,8 @@ void query_prescriptions(void)
             }
             break;
         }
-        case 4: {
+        case 4:
+        {
             /* 处方无 status, 第 4 项改为按药品名称模糊 */
             char key[MAX_NAME_LEN];
             printf("请输入药品名称(输入0返回): ");

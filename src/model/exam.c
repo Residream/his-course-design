@@ -402,12 +402,16 @@ Exam *get_nth_exam(Exam *head, int n)
 }
 
 /* 统计医生名下的检查数量 */
-int count_exams_for_doctor(Exam *e_head, Registration *reg_head, const char *d_id)
+int count_exams_for_doctor(Exam *e_head, Visit *v_head, Registration *reg_head, const char *d_id)
 {
     int count = 0;
     for (Exam *e = e_head; e; e = e->next)
     {
-        const char *e_d_id = get_doctor_id_by_reg_id(reg_head, e->visit_id);
+        Visit *v = find_visit_by_v_id(v_head, e->visit_id);
+        if (!v)
+            continue;
+
+        const char *e_d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
         if (e_d_id && strcmp(e_d_id, d_id) == 0)
         {
             count++;
@@ -417,12 +421,16 @@ int count_exams_for_doctor(Exam *e_head, Registration *reg_head, const char *d_i
 }
 
 /* 获取医生名下的第n个检查节点 */
-Exam *get_nth_exam_for_doctor(Exam *e_head, Registration *reg_head, const char *d_id, int n)
+Exam *get_nth_exam_for_doctor(Exam *e_head, Visit *v_head, Registration *reg_head, const char *d_id, int n)
 {
     int count = 0;
     for (Exam *e = e_head; e; e = e->next)
     {
-        const char *e_d_id = get_doctor_id_by_reg_id(reg_head, e->visit_id);
+        Visit *v = find_visit_by_v_id(v_head, e->visit_id);
+        if (!v)
+            continue;
+
+        const char *e_d_id = get_doctor_id_by_reg_id(reg_head, v->reg_id);
         if (e_d_id && strcmp(e_d_id, d_id) == 0)
         {
             if (count == n)
