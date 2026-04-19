@@ -418,17 +418,23 @@ void add_ward(void)
     while (1)
     {
         print_department_hint();
-        printf("请输入关联科室名称(输入0返回): ");
+        printf("请输入关联科室名称(回车=综合 | 输入0返回): ");
         safe_input(department, sizeof(department));
 
         if (strcmp(department, "0") == 0)
             return;
 
+        /* 空输入 → 默认"综合"(VIP病区等跨科场景常用) */
         if (department[0] == '\0')
         {
-            printf("输入错误！科室名称不能为空，请重新输入。\n");
-            continue;
+            strncpy(department, "综合", sizeof(department) - 1);
+            department[sizeof(department) - 1] = '\0';
+            break;
         }
+
+        /* 显式输入"综合"也合法(跨科病区专用标识) */
+        if (strcmp(department, "综合") == 0)
+            break;
 
         if (!is_valid_department(department))
         {
