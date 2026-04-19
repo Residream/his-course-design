@@ -348,15 +348,17 @@ void patient_register(void)
     /* 密码 */
     while (1)
     {
-        printf("请输入患者密码(输入0返回): ");
-        safe_input(password, sizeof(password));
+        print_password_hint();
+        printf("请输入患者密码(4位<=长度<=32位 | 输入0返回): ");
+        input_password(password, sizeof(password));
 
         if (strcmp(password, "0") == 0)
             return;
 
-        if (password[0] == '\0')
+        char pwd_err[128];
+        if (validate_password(password, pwd_err, sizeof(pwd_err)) != 0)
         {
-            printf("输入错误！密码不能为空，请重新输入。\n");
+            printf("输入错误！%s，请重新输入。\n", pwd_err);
             continue;
         }
         break;

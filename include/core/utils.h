@@ -15,6 +15,9 @@
  * 工具函数声明
  */
 void safe_input(char *buf, int size);                           // 安全读取一行输入
+void input_password(char *buf, int size);                       // 密码专用输入(不过滤'|'，密码哈希存储不会破坏文件格式)
+int validate_password(const char *pwd, char *err_msg, size_t err_size); // 校验密码：字母/数字/英文符号，4<=长度<=32
+void print_password_hint(void);                                 // 打印密码允许的字符集提示
 void clear_screen(void);                                        // 清屏(多系统)
 void trim_newline(char *s);                                     // 去掉字符串末尾换行(\r\n)
 void wait_enter(void);                                          // 提示并等待回车

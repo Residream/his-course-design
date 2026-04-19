@@ -171,17 +171,19 @@ void login_menu(void)
 
             /* 输入医生密码 */
             char password[MAX_INPUT_LEN];
-            printf("请输入医生密码(输入0返回): ");
-            safe_input(password, sizeof(password));
-            if (password[0] == '\0')
+            print_password_hint();
+            printf("请输入医生密码(4位<=长度<=32位 | 输入0返回): ");
+            input_password(password, sizeof(password));
+            if (strcmp(password, "0") == 0)
             {
-                printf("输入错误！密码不能为空。\n");
-                wait_enter();
                 clear_screen();
                 break;
             }
-            if (strcmp(password, "0") == 0)
+            char pwd_err[128];
+            if (validate_password(password, pwd_err, sizeof(pwd_err)) != 0)
             {
+                printf("输入错误！%s。\n", pwd_err);
+                wait_enter();
                 clear_screen();
                 break;
             }
@@ -226,10 +228,19 @@ void login_menu(void)
                 break;
             }
             char password[MAX_INPUT_LEN];
-            printf("请输入管理员密码(输入0返回): ");
-            safe_input(password, sizeof(password));
+            print_password_hint();
+            printf("请输入管理员密码(4位<=长度<=32位 | 输入0返回): ");
+            input_password(password, sizeof(password));
             if (strcmp(password, "0") == 0)
             {
+                clear_screen();
+                break;
+            }
+            char pwd_err[128];
+            if (validate_password(password, pwd_err, sizeof(pwd_err)) != 0)
+            {
+                printf("输入错误！%s。\n", pwd_err);
+                wait_enter();
                 clear_screen();
                 break;
             }
@@ -320,17 +331,19 @@ void patient_pre_menu(void)
 
             /* 输入患者密码 */
             char password[MAX_INPUT_LEN];
-            printf("请输入患者密码(输入0返回): ");
-            safe_input(password, sizeof(password));
-            if (password[0] == '\0')
+            print_password_hint();
+            printf("请输入患者密码(4位<=长度<=32位 | 输入0返回): ");
+            input_password(password, sizeof(password));
+            if (strcmp(password, "0") == 0)
             {
-                printf("输入错误！密码不能为空。\n");
-                wait_enter();
                 clear_screen();
                 break;
             }
-            if (strcmp(password, "0") == 0)
+            char pwd_err[128];
+            if (validate_password(password, pwd_err, sizeof(pwd_err)) != 0)
             {
+                printf("输入错误！%s。\n", pwd_err);
+                wait_enter();
                 clear_screen();
                 break;
             }

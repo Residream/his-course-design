@@ -471,15 +471,17 @@ void add_patient(void)
     /* 获取密码 */
     while (1)
     {
-        printf("请输入患者密码(输入0返回): ");
-        safe_input(password, sizeof(password));
+        print_password_hint();
+        printf("请输入患者密码(4位<=长度<=32位 | 输入0返回): ");
+        input_password(password, sizeof(password));
 
         if (strcmp(password, "0") == 0)
             return;
 
-        if (password[0] == '\0')
+        char pwd_err[128];
+        if (validate_password(password, pwd_err, sizeof(pwd_err)) != 0)
         {
-            printf("输入错误！密码不能为空，请重新输入。\n");
+            printf("输入错误！%s，请重新输入。\n", pwd_err);
             continue;
         }
         break;
@@ -842,15 +844,17 @@ void update_patient(void)
             {
                 char new_password[MAX_INPUT_LEN];
 
-                printf("请输入患者新密码(输入0返回): ");
-                safe_input(new_password, sizeof(new_password));
+                print_password_hint();
+                printf("请输入患者新密码(4位<=长度<=32位 | 输入0返回): ");
+                input_password(new_password, sizeof(new_password));
 
                 if (strcmp(new_password, "0") == 0)
                     break;
 
-                if (new_password[0] == '\0')
+                char pwd_err[128];
+                if (validate_password(new_password, pwd_err, sizeof(pwd_err)) != 0)
                 {
-                    printf("输入错误！密码不能为空，请重新输入。\n");
+                    printf("输入错误！%s，请重新输入。\n", pwd_err);
                     continue;
                 }
 
@@ -1293,7 +1297,7 @@ void patient_update_my_info(void)
                 char new_password[MAX_INPUT_LEN];
 
                 printf("请输入患者旧密码(输入0返回): ");
-                safe_input(old_password, sizeof(old_password));
+                input_password(old_password, sizeof(old_password));
 
                 if (strcmp(old_password, "0") == 0)
                     break;
@@ -1307,8 +1311,9 @@ void patient_update_my_info(void)
                 int cancel_new_pwd = 0;
                 while (1)
                 {
-                    printf("请输入患者新密码(输入0返回): ");
-                    safe_input(new_password, sizeof(new_password));
+                    print_password_hint();
+                    printf("请输入患者新密码(4位<=长度<=32位 | 输入0返回): ");
+                    input_password(new_password, sizeof(new_password));
 
                     if (strcmp(new_password, "0") == 0)
                     {
@@ -1316,9 +1321,10 @@ void patient_update_my_info(void)
                         break;
                     }
 
-                    if (new_password[0] == '\0')
+                    char pwd_err[128];
+                    if (validate_password(new_password, pwd_err, sizeof(pwd_err)) != 0)
                     {
-                        printf("输入错误！密码不能为空，请重新输入。\n");
+                        printf("输入错误！%s，请重新输入。\n", pwd_err);
                         continue;
                     }
                     break;

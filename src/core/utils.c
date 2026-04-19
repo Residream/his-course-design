@@ -49,6 +49,85 @@ void safe_input(char *str, int size)
     *w = '\0';
 }
 
+/* 密码专用输入：读取一行但不过滤 '|'(密码经哈希存储，特殊符号不会破坏文件格式) */
+void input_password(char *str, int size)
+{
+    if (fgets(str, size, stdin) != NULL) // 从标准输入读取一行
+    {
+        size_t len = strlen(str);
+
+        if (len > 0 && str[len - 1] == '\n') // 去掉末尾换行符
+        {
+            str[len - 1] = '\0';
+        }
+        else
+        {
+            int c; // 输入过长时清空缓冲区
+            while ((c = getchar()) != '\n' && c != EOF)
+            {
+            }
+        }
+    }
+    else
+    {
+        str[0] = '\0'; // 读取失败时返回空字符串
+    }
+}
+
+/* 校验密码格式：字母/数字/英文符号，4<=长度<=32 */
+int validate_password(const char *pwd, char *err_msg, size_t err_size)
+{
+    /* 空指针或空串 */
+    if (!pwd || pwd[0] == '\0')
+    {
+        snprintf(err_msg, err_size, "密码不能为空");
+        return 1;
+    }
+
+    size_t len = strlen(pwd);
+
+    /* 长度校验：4 <= len <= 32 */
+    if (len < 4)
+    {
+        snprintf(err_msg, err_size, "密码长度不能少于4位");
+        return 2;
+    }
+    if (len > 32)
+    {
+        snprintf(err_msg, err_size, "密码长度不能超过32位");
+        return 3;
+    }
+
+    /* 字符集校验：字母 / 数字 / 指定英文符号 */
+    static const char *ALLOWED_SYMBOLS = "!@#$%^&*()_+-=[]{}|;:'\",.<>/?~`";
+    for (size_t i = 0; i < len; i++)
+    {
+        unsigned char c = (unsigned char)pwd[i];
+        int ok = 0;
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) // 字母
+            ok = 1;
+        else if (c >= '0' && c <= '9') // 数字
+            ok = 1;
+        else if (strchr(ALLOWED_SYMBOLS, c) != NULL) // 允许的英文符号
+            ok = 1;
+
+        if (!ok)
+        {
+            snprintf(err_msg, err_size,
+                     "密码只能包含字母、数字或指定英文符号，不允许汉字、空格或全角字符");
+            return 4;
+        }
+    }
+
+    return 0;
+}
+
+/* 打印密码允许的字符集提示 */
+void print_password_hint(void)
+{
+    printf("可选字符: 字母 / 数字 / ! @ # $ %% ^ & * ( ) _ + - = [ ] { } | ; : ' \" , . < > / ? ~ `\n");
+}
+
 /* 清屏(多系统) */
 void clear_screen(void)
 {
