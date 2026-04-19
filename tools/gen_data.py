@@ -57,6 +57,11 @@ def days_ago(d, h=10, m=0):
     return (NOW - timedelta(days=d)).replace(hour=h, minute=m, second=0, microsecond=0)
 
 
+def today_time(h=10, m=0):
+    """返回今天的指定时间点（用于"未就诊"挂号和"看诊中"看诊，避免出现昨日未就诊或前日看诊中的不合理状态）"""
+    return NOW.replace(hour=h, minute=m, second=0, microsecond=0)
+
+
 def ts(dt): return int(dt.timestamp())
 
 # 1. 管理员
@@ -274,14 +279,14 @@ def add_pr(v, p, d, drug, dose, freq):
     prid = f"PR{_pc[0]:04d}"; prescriptions.append((prid, v, p, d, drug, dose, freq)); _pc[0] += 1; return prid
 
 # ===== 主线：P0001 =====
-r_p1_1 = add_reg("P0001", "D0001", days_ago(1, 9, 30), 0)
+r_p1_1 = add_reg("P0001", "D0001", today_time(9, 30), 0)              # 未就诊 → 今天
 r_p1_2 = add_reg("P0001", "D0001", days_ago(35, 10, 15), 1)
 r_p1_3 = add_reg("P0001", "D0002", days_ago(20, 14, 0), 2)
 r_p1_4 = add_reg("P0001", "D0002", days_ago(60, 10, 0), 1)
-r_p1_5 = add_reg("P0001", "D0001", days_ago(7, 11, 0), 1)
+r_p1_5 = add_reg("P0001", "D0001", today_time(11, 0), 1)              # 对应看诊中 → 今天
 v_p1_1 = add_visit(r_p1_2, days_ago(35, 12, 15), 1, "原发性高血压 2 级（中危）")
 v_p1_2 = add_visit(r_p1_4, days_ago(60, 11, 0), 1, "2 型糖尿病伴酮症酸中毒")
-v_p1_3 = add_visit(r_p1_5, days_ago(7, 12, 0), 0, "高血压危象，需紧急处理")
+v_p1_3 = add_visit(r_p1_5, today_time(12, 0), 0, "高血压危象，需紧急处理")  # 看诊中 → 今天
 for item, res in [("血压测量","148/95 mmHg，偏高"),("血常规","正常"),("血脂四项","总胆固醇 6.2 mmol/L，偏高")]:
     add_exam(v_p1_1, item, res)
 for item, res in [("空腹血糖","14.5 mmol/L，显著升高"),("糖化血红蛋白","9.8%，控制不佳"),("尿酮体","阳性(++)")]:
@@ -300,10 +305,10 @@ for dg, ds, fq in [("DR0001","2粒","1日1次"),("DR0002","1片","1日2次"),("D
 
 # D0001 其他名下患者
 r_p7 = add_reg("P0007", "D0001", days_ago(15, 10, 0), 1)
-r_p15 = add_reg("P0015", "D0001", days_ago(5, 11, 0), 1)
-r_p20 = add_reg("P0020", "D0001", days_ago(2, 14, 30), 0)
+r_p15 = add_reg("P0015", "D0001", today_time(11, 0), 1)              # 对应看诊中 → 今天
+r_p20 = add_reg("P0020", "D0001", today_time(14, 30), 0)             # 未就诊 → 今天
 v_p7 = add_visit(r_p7, days_ago(15, 12, 0), 1, "冠心病稳定性心绞痛")
-v_p15 = add_visit(r_p15, days_ago(5, 12, 0), 0, "慢性阻塞性肺疾病急性加重")
+v_p15 = add_visit(r_p15, today_time(12, 0), 0, "慢性阻塞性肺疾病急性加重")  # 看诊中 → 今天
 add_exam(v_p7, "冠脉CTA", "前降支中段 50% 狭窄")
 add_exam(v_p15, "肺功能", "FEV1/FVC 58%，重度阻塞")
 for dg, ds, fq in [("DR0007","1片","1日1次"),("DR0005","1片","1日1次"),("DR0028","1片","必要时")]:
@@ -355,13 +360,26 @@ for pid in other_pids:
     for _ in range(random.choices([1,2,3], weights=[55,35,10])[0]):
         dept = pref if random.random() < 0.7 else random.choice(list(dept_weights.keys()))
         did = random.choice(doctors_by_dept[dept])
-        reg_time = days_ago(random.randint(1, 88), random.randint(8,17), random.choice([0,15,30,45]))
         status = random.choices([1,0,2], weights=[80,12,8])[0]
+
+        # 先决定看诊状态(仅当挂号已就诊时有效)
+        v_status = 0 if (status == 1 and random.random() < 0.03) else 1
+
+        # 根据业务状态决定时间：未就诊 / 看诊中 都必须发生在今天
+        if status == 0:
+            # 未就诊 → 今天某时挂号
+            reg_time = today_time(random.randint(8, 17), random.choice([0,15,30,45]))
+        elif status == 1 and v_status == 0:
+            # 已就诊 + 看诊中 → 挂号和看诊都在今天，挂号在前看诊在后
+            reg_time = today_time(random.randint(8, 12), random.choice([0,15,30,45]))
+        else:
+            # 已就诊 + 看诊已完成 / 已取消 → 历史时间
+            reg_time = days_ago(random.randint(1, 88), random.randint(8,17), random.choice([0,15,30,45]))
+
         rid = add_reg(pid, did, reg_time, status)
         if status == 1:
             diag, drugs_list = random.choice(_diagnoses_pool[dept])
-            visit_time = reg_time + timedelta(hours=random.randint(1, 4))
-            v_status = 0 if random.random() < 0.03 else 1
+            visit_time = reg_time + timedelta(hours=random.randint(1, 3))   # 看诊中时仍在今天范围内
             vid = add_visit(rid, visit_time, v_status, diag)
             if v_status == 1 and random.random() < 0.8:
                 add_exam(vid, random.choice(["血常规","尿常规","B超","心电图","X光片","生化全套","CRP"]),
