@@ -41,8 +41,7 @@ static void print_analytics_line(int cols, const int *widths)
     printf("\n");
 }
 
-/* 从 departments.txt 直接加载科室名列表, 写入 dept_names[], 返回科室数量
- * 相比遍历医生链表去重, 这样更直接且能包含暂无医生的科室 */
+/* 从 departments.txt 直接加载科室名列表, 写入 dept_names[], 返回科室数量 */
 static int collect_dept_names(char dept_names[][MAX_NAME_LEN], int max_count)
 {
     Department *dept_head = load_departments_from_file();
@@ -71,7 +70,7 @@ typedef struct WardUtilStats
     char name[MAX_NAME_LEN];
     int capacity;
     int occupied;
-    float utilization_rate;
+    float utilization_rate; // 利用率 = occupied / capacity
 } WardUtilStats;
 
 /* 病房周转率统计结构体 */
@@ -81,7 +80,7 @@ typedef struct WardTurnoverStats
     char name[MAX_NAME_LEN];
     int capacity;
     int discharged;
-    float turnover_rate;
+    float turnover_rate; // 周转率 = discharged / capacity
 } WardTurnoverStats;
 
 /* 空床率统计结构体（用于排名） */
@@ -90,7 +89,7 @@ typedef struct WardEmptyStats
     char name[MAX_NAME_LEN];
     int capacity;
     int occupied;
-    float empty_rate;
+    float empty_rate; // 空床率 = (capacity - occupied) / capacity
 } WardEmptyStats;
 
 /* 住院天数统计结构体 */
@@ -100,7 +99,7 @@ typedef struct WardStayStats
     char name[MAX_NAME_LEN];
     int total_days;
     int discharged_count;
-    float avg_days;
+    float avg_days; // 平均住院天数 = total_days / discharged_count
 } WardStayStats;
 
 /* 计算病房利用率表格列宽 */
@@ -114,10 +113,10 @@ static void calc_ward_utilization_width(Ward *w_head, int *name_w, int *cap_w, i
 
     /* 进度条固定宽度 BAR_WIDTH 格, 显示宽度 = 1([) + BAR_WIDTH + 1(]) */
     if (*bar_w < ANALYTICS_BAR_DISPLAY_WIDTH)
-        *bar_w = ANALYTICS_BAR_DISPLAY_WIDTH;
+        *bar_w = ANALYTICS_BAR_DISPLAY_WIDTH; // 拉长列宽与进度条匹配
     /* 利用率列宽至少容纳 "100.0%" */
     if (*rate_w < ANALYTICS_RATE_COL_MIN_WIDTH)
-        *rate_w = ANALYTICS_RATE_COL_MIN_WIDTH;
+        *rate_w = ANALYTICS_RATE_COL_MIN_WIDTH; // 利用率列至少宽度足以容纳 "100.0%" 这样的字符串
 
     /* 遍历计算最大列宽 */
     for (Ward *w = w_head; w; w = w->next)
@@ -435,7 +434,7 @@ void analytics_ward_utilization(void)
     {
         int i = 0;
         for (Ward *w = w_head; w; w = w->next)
-            ward_arr[i++] = w;
+            ward_arr[i++] = w; // 每个数组元素指向一个病房节点，方便后续按页索引显示以及qsort排序
     }
 
     /* ===== 预计算：第一部分所需 ===== */
@@ -445,15 +444,16 @@ void analytics_ward_utilization(void)
     int total_capacity = 0, total_occupied = 0;
     for (int i = 0; i < ward_count; i++)
     {
-        total_capacity += ward_arr[i]->capacity;
-        total_occupied += ward_arr[i]->occupied;
+        total_capacity += ward_arr[i]->capacity; // 累加总床位数
+        total_occupied += ward_arr[i]->occupied; // 累加总占用床位数
     }
-    float total_ratio = (total_capacity > 0) ? (float)total_occupied / total_capacity : 0.0f;
+    float total_ratio = (total_capacity > 0) ? (float)total_occupied / total_capacity : 0.0f; // 计算总利用率
     char total_bar[ANALYTICS_BAR_BUF_SIZE];
-    render_bar(total_ratio, ANALYTICS_SUMMARY_BAR_WIDTH, total_bar);
+    render_bar(total_ratio, ANALYTICS_SUMMARY_BAR_WIDTH, total_bar); // 渲染总利用率进度条
 
     /* ===== 预计算：第二部分 周转率 ===== */
-    WardTurnoverStats *turnovers = (WardTurnoverStats *)calloc(ward_count, sizeof(WardTurnoverStats));
+    WardTurnoverStats *turnovers =
+        (WardTurnoverStats *)calloc(ward_count, sizeof(WardTurnoverStats)); // 每个病房对应一个周转率统计结构体
     if (!turnovers)
     {
         printf("内存分配失败！\n");
@@ -467,13 +467,13 @@ void analytics_ward_utilization(void)
 
     for (int i = 0; i < ward_count; i++)
     {
-        strncpy(turnovers[i].ward_id, ward_arr[i]->ward_id, MAX_ID_LEN - 1);
+        strncpy(turnovers[i].ward_id, ward_arr[i]->ward_id, MAX_ID_LEN - 1); // 复制病房ID到周转率统计结构体
         turnovers[i].ward_id[MAX_ID_LEN - 1] = '\0';
-        strncpy(turnovers[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1);
+        strncpy(turnovers[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1); // 复制病房名称到周转率统计结构体
         turnovers[i].name[MAX_NAME_LEN - 1] = '\0';
-        turnovers[i].capacity = ward_arr[i]->capacity;
-        turnovers[i].discharged = 0;
-        turnovers[i].turnover_rate = 0.0f;
+        turnovers[i].capacity = ward_arr[i]->capacity; // 复制病房容量到周转率统计结构体
+        turnovers[i].discharged = 0;                   // 初始化出院人次为0
+        turnovers[i].turnover_rate = 0.0f;             // 初始化周转率为0.0
     }
 
     if (h_head)
@@ -486,7 +486,7 @@ void analytics_ward_utilization(void)
                 {
                     if (strcmp(turnovers[i].ward_id, h->ward_id) == 0)
                     {
-                        turnovers[i].discharged++;
+                        turnovers[i].discharged++; // 累加对应病房的出院人次
                         break;
                     }
                 }
@@ -497,14 +497,15 @@ void analytics_ward_utilization(void)
     for (int i = 0; i < ward_count; i++)
     {
         turnovers[i].turnover_rate =
-            (turnovers[i].capacity > 0) ? (float)turnovers[i].discharged / turnovers[i].capacity : 0.0f;
+            (turnovers[i].capacity > 0) ? (float)turnovers[i].discharged / turnovers[i].capacity : 0.0f; // 计算周转率
     }
 
     int t_name_w, t_dis_w, t_turn_w;
     calc_ward_turnover_width(turnovers, ward_count, &t_name_w, &t_dis_w, &t_turn_w);
 
     /* ===== 预计算：第三部分 空床率 ===== */
-    WardEmptyStats *empties = (WardEmptyStats *)calloc(ward_count, sizeof(WardEmptyStats));
+    WardEmptyStats *empties =
+        (WardEmptyStats *)calloc(ward_count, sizeof(WardEmptyStats)); // 每个病房对应一个空床率统计结构体
     if (!empties)
     {
         printf("内存分配失败！\n");
@@ -519,22 +520,23 @@ void analytics_ward_utilization(void)
 
     for (int i = 0; i < ward_count; i++)
     {
-        strncpy(empties[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1);
+        strncpy(empties[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1); // 复制病房名称到空床率统计结构体
         empties[i].name[MAX_NAME_LEN - 1] = '\0';
-        empties[i].capacity = ward_arr[i]->capacity;
-        empties[i].occupied = ward_arr[i]->occupied;
+        empties[i].capacity = ward_arr[i]->capacity; // 复制病房容量到空床率统计结构体
+        empties[i].occupied = ward_arr[i]->occupied; // 复制病房占用床位数到空床率统计结构体
         empties[i].empty_rate = (ward_arr[i]->capacity > 0)
                                     ? (float)(ward_arr[i]->capacity - ward_arr[i]->occupied) / ward_arr[i]->capacity
-                                    : 0.0f;
+                                    : 0.0f; // 计算空床率
     }
 
-    qsort(empties, ward_count, sizeof(WardEmptyStats), compare_ward_empty_desc);
+    qsort(empties, ward_count, sizeof(WardEmptyStats), compare_ward_empty_desc); // 按空床率降序排序
 
     int r_rank_w, r_name_w, r_empty_w, r_rate_w, r_bar_w;
     calc_ward_empty_width(empties, ward_count, &r_rank_w, &r_name_w, &r_empty_w, &r_rate_w, &r_bar_w);
 
     /* ===== 预计算：第四部分 历史平均住院天数 ===== */
-    WardStayStats *stays = (WardStayStats *)calloc(ward_count, sizeof(WardStayStats));
+    WardStayStats *stays =
+        (WardStayStats *)calloc(ward_count, sizeof(WardStayStats)); // 每个病房对应一个住院天数统计结构体
     if (!stays)
     {
         printf("内存分配失败！\n");
@@ -550,13 +552,13 @@ void analytics_ward_utilization(void)
 
     for (int i = 0; i < ward_count; i++)
     {
-        strncpy(stays[i].ward_id, ward_arr[i]->ward_id, MAX_ID_LEN - 1);
+        strncpy(stays[i].ward_id, ward_arr[i]->ward_id, MAX_ID_LEN - 1); // 复制病房ID到住院天数统计结构体
         stays[i].ward_id[MAX_ID_LEN - 1] = '\0';
-        strncpy(stays[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1);
+        strncpy(stays[i].name, ward_arr[i]->name, MAX_NAME_LEN - 1); // 复制病房名称到住院天数统计结构体
         stays[i].name[MAX_NAME_LEN - 1] = '\0';
-        stays[i].total_days = 0;
-        stays[i].discharged_count = 0;
-        stays[i].avg_days = 0.0f;
+        stays[i].total_days = 0;       // 初始化总住院天数为0
+        stays[i].discharged_count = 0; // 初始化出院人次为0
+        stays[i].avg_days = 0.0f;      // 初始化平均住院天数为0.0
     }
 
     if (h_head)
@@ -565,16 +567,16 @@ void analytics_ward_utilization(void)
         {
             if (h->status == HOSP_STATUS_DISCHARGED && h->discharge_date > h->admit_date)
             {
-                int days = (int)((h->discharge_date - h->admit_date) / ANALYTICS_SECONDS_PER_DAY);
+                int days = (int)((h->discharge_date - h->admit_date) / ANALYTICS_SECONDS_PER_DAY); // 计算住院天数
                 if (days < 1)
-                    days = 1;
+                    days = 1; // 不足1天算作1天
 
                 for (int i = 0; i < ward_count; i++)
                 {
                     if (strcmp(stays[i].ward_id, h->ward_id) == 0)
                     {
-                        stays[i].total_days += days;
-                        stays[i].discharged_count++;
+                        stays[i].total_days += days; // 累加住院天数
+                        stays[i].discharged_count++; // 累加出院人次
                         break;
                     }
                 }
@@ -587,14 +589,14 @@ void analytics_ward_utilization(void)
     {
         if (stays[i].discharged_count > 0)
         {
-            stays[i].avg_days = (float)stays[i].total_days / stays[i].discharged_count;
+            stays[i].avg_days = (float)stays[i].total_days / stays[i].discharged_count; // 计算平均住院天数
             if (stays[i].avg_days > max_avg)
-                max_avg = stays[i].avg_days;
+                max_avg = stays[i].avg_days; // 记录最大平均住院天数, 用于后续水平进度条显示比例
         }
     }
-    int max_int = (int)(max_avg + 0.5f);
+    int max_int = (int)(max_avg + 0.5f); // 将最大平均住院天数四舍五入取整，作为水平进度条的基准值
     if (max_int < 1)
-        max_int = 1;
+        max_int = 1; // 避免除以0导致显示异常
 
     int s_name_w, s_cnt_w, s_avg_w, s_bar_w;
     calc_ward_stay_width(stays, ward_count, &s_name_w, &s_cnt_w, &s_avg_w, &s_bar_w);
@@ -605,8 +607,8 @@ void analytics_ward_utilization(void)
 
     int sec_totals[SEC_COUNT] = {ward_count, ward_count, ward_count, ward_count};
 
-    int cur_sec = 0;
-    int cur_page = 1;
+    int cur_sec = 0;  // 当前分类索引
+    int cur_page = 1; // 当前页码，从1开始
 
     while (1)
     {
@@ -693,16 +695,16 @@ void analytics_ward_utilization(void)
         {
             if (cur_sec < SEC_COUNT - 1)
             {
-                cur_sec++;
-                cur_page = 1;
+                cur_sec++;    // 切换到下一类
+                cur_page = 1; // 切换类时重置页码为1
             }
         }
         else if (strcmp(buf, "pp") == 0 || strcmp(buf, "PP") == 0)
         {
             if (cur_sec > 0)
             {
-                cur_sec--;
-                cur_page = 1;
+                cur_sec--;    // 切换到上一类
+                cur_page = 1; // 切换类时重置页码为1
             }
         }
         else if (strcmp(buf, "q") == 0 || strcmp(buf, "Q") == 0)
@@ -738,11 +740,11 @@ void analytics_ward_utilization(void)
 typedef struct DeptWorkloadStats
 {
     char name[MAX_NAME_LEN];
-    int total;       /* 总挂号量 */
-    int done;        /* 已完成(已就诊) */
-    int canceled;    /* 已取消 */
-    int recent_30d;  /* 近30天挂号量 */
-    int prev_30d;    /* 前30天挂号量 */
+    int total;      // 总挂号量
+    int done;       // 已完成(已就诊)
+    int canceled;   // 已取消
+    int recent_30d; // 近30天挂号量
+    int prev_30d;   // 前30天挂号量
     float cancel_rate;
     float trend_pct; /* 趋势百分比 */
 } DeptWorkloadStats;
@@ -753,7 +755,7 @@ typedef struct DoctorVisitStats
     char d_id[MAX_ID_LEN];
     char name[MAX_NAME_LEN];
     char department[MAX_NAME_LEN];
-    int visit_count;
+    int visit_count; // 总接诊量
 } DoctorVisitStats;
 
 /* 医生接诊量降序比较函数 */
@@ -839,23 +841,23 @@ static void print_dept_workload_line(DeptWorkloadStats *stat, int dept_w, int to
     snprintf(rate_str, sizeof(rate_str), "%.1f%%", stat->cancel_rate);
 
     /* 趋势箭头 */
-    if (stat->prev_30d == 0 && stat->recent_30d == 0)
+    if (stat->prev_30d == 0 && stat->recent_30d == 0) // 前后30天都没有数据，显示无数据
     {
         snprintf(trend_str, sizeof(trend_str), "→ 无数据");
     }
-    else if (stat->prev_30d == 0)
+    else if (stat->prev_30d == 0) // 从0增长到某个数，显示新增
     {
         snprintf(trend_str, sizeof(trend_str), "↑ 新增");
     }
-    else if (stat->trend_pct > ANALYTICS_TREND_THRESHOLD)
+    else if (stat->trend_pct > ANALYTICS_TREND_THRESHOLD) // 增长超过阈值才显示上升箭头
     {
         snprintf(trend_str, sizeof(trend_str), "↑ +%.0f%%", stat->trend_pct);
     }
-    else if (stat->trend_pct < -ANALYTICS_TREND_THRESHOLD)
+    else if (stat->trend_pct < -ANALYTICS_TREND_THRESHOLD) // 负增长超过阈值才显示下降箭头
     {
         snprintf(trend_str, sizeof(trend_str), "↓ %.0f%%", stat->trend_pct);
     }
-    else
+    else // 变化在阈值范围内，显示持平箭头
     {
         snprintf(trend_str, sizeof(trend_str), "→ 持平");
     }
