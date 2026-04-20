@@ -41,6 +41,25 @@ static void print_analytics_line(int cols, const int *widths)
     printf("\n");
 }
 
+/* 从 departments.txt 直接加载科室名列表, 写入 dept_names[], 返回科室数量
+ * 相比遍历医生链表去重, 这样更直接且能包含暂无医生的科室 */
+static int collect_dept_names(char dept_names[][MAX_NAME_LEN], int max_count)
+{
+    Department *dept_head = load_departments_from_file();
+    int count = 0;
+
+    for (Department *d = dept_head; d && count < max_count; d = d->next)
+    {
+        strncpy(dept_names[count], d->name, MAX_NAME_LEN - 1);
+        dept_names[count][MAX_NAME_LEN - 1] = '\0';
+        count++;
+    }
+
+    if (dept_head)
+        free_departments(dept_head);
+    return count;
+}
+
 /*
  * =============== 病房利用率分析相关结构体和函数 ===============
  */
@@ -972,28 +991,9 @@ void analytics_department_workload(void)
 
     /* ===== 第一部分预计算：科室门诊量统计 ===== */
 
-    /* 收集科室（去重） */
+    /* 直接从 departments.txt 加载科室列表 */
     char dept_names[ANALYTICS_MAX_DEPT_COUNT][MAX_NAME_LEN];
-    int dept_count = 0;
-
-    for (Doctor *doc = d_head; doc; doc = doc->next)
-    {
-        int found = 0;
-        for (int i = 0; i < dept_count; i++)
-        {
-            if (strcmp(dept_names[i], doc->department) == 0)
-            {
-                found = 1;
-                break;
-            }
-        }
-        if (!found && dept_count < ANALYTICS_MAX_DEPT_COUNT)
-        {
-            strncpy(dept_names[dept_count], doc->department, MAX_NAME_LEN - 1);
-            dept_names[dept_count][MAX_NAME_LEN - 1] = '\0';
-            dept_count++;
-        }
-    }
+    int dept_count = collect_dept_names(dept_names, ANALYTICS_MAX_DEPT_COUNT);
 
     DeptWorkloadStats *dept_stats = (DeptWorkloadStats *)calloc(dept_count, sizeof(DeptWorkloadStats));
     if (!dept_stats)
@@ -1472,25 +1472,7 @@ void analytics_ward_optimization(void)
         ward_count++;
 
     char dept_names[ANALYTICS_MAX_DEPT_COUNT][MAX_NAME_LEN];
-    int dept_count = 0;
-    for (Doctor *doc = d_head; doc; doc = doc->next)
-    {
-        int found = 0;
-        for (int i = 0; i < dept_count; i++)
-        {
-            if (strcmp(dept_names[i], doc->department) == 0)
-            {
-                found = 1;
-                break;
-            }
-        }
-        if (!found && dept_count < ANALYTICS_MAX_DEPT_COUNT)
-        {
-            strncpy(dept_names[dept_count], doc->department, MAX_NAME_LEN - 1);
-            dept_names[dept_count][MAX_NAME_LEN - 1] = '\0';
-            dept_count++;
-        }
-    }
+    int dept_count = collect_dept_names(dept_names, ANALYTICS_MAX_DEPT_COUNT);
 
     /* ===== 第一部分预计算：病房住院统计 ===== */
     WardHospStats *ward_stats = (WardHospStats *)calloc(ward_count, sizeof(WardHospStats));
@@ -2146,29 +2128,7 @@ void analytics_drug_usage(void)
 
     /* ===== 第二部分预计算：科室用药金额 ===== */
     char dept_names[ANALYTICS_MAX_DEPT_COUNT][MAX_NAME_LEN];
-    int dept_count = 0;
-
-    if (d_head)
-    {
-        for (Doctor *doc = d_head; doc; doc = doc->next)
-        {
-            int found = 0;
-            for (int i = 0; i < dept_count; i++)
-            {
-                if (strcmp(dept_names[i], doc->department) == 0)
-                {
-                    found = 1;
-                    break;
-                }
-            }
-            if (!found && dept_count < ANALYTICS_MAX_DEPT_COUNT)
-            {
-                strncpy(dept_names[dept_count], doc->department, MAX_NAME_LEN - 1);
-                dept_names[dept_count][MAX_NAME_LEN - 1] = '\0';
-                dept_count++;
-            }
-        }
-    }
+    int dept_count = collect_dept_names(dept_names, ANALYTICS_MAX_DEPT_COUNT);
 
     DeptDrugCostStats *cost_stats = (DeptDrugCostStats *)calloc(dept_count, sizeof(DeptDrugCostStats));
     int has_cost_stats = 0;
